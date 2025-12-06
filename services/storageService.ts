@@ -1,44 +1,127 @@
-import { Item, Transaction, Instructor } from '../types';
-import { INITIAL_INVENTORY, INITIAL_INSTRUCTORS } from '../constants';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  Timestamp, 
+  writeBatch,
+  getDocs
+} from 'firebase/firestore';
+import { Item, Transaction, Instructor, ItemStatus, TransactionType } from '../types';
+import { INITIAL_INSTRUCTORS } from '../constants';
 
-// Changed keys to reset data for the new empty inventory requirement
-const INV_KEY = 'makhzan_inventory_prod_v1';
-const TRANS_KEY = 'makhzan_transactions_prod_v1';
-const INST_KEY = 'makhzan_instructors'; // Keep instructors as they are
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCJc3F9rv7J6x0aOocf4XGGsXqF2Tyf-OQ",
+  authDomain: "manufacturing-warehouse-system.firebaseapp.com",
+  projectId: "manufacturing-warehouse-system",
+  storageBucket: "manufacturing-warehouse-system.firebasestorage.app",
+  messagingSenderId: "231034291590",
+  appId: "1:231034291590:web:7c1833e9c0d56839c0d807",
+  measurementId: "G-G6EHEE7ZRQ"
+};
 
-export const getInventory = (): Item[] => {
-  const stored = localStorage.getItem(INV_KEY);
-  if (!stored) {
-    localStorage.setItem(INV_KEY, JSON.stringify(INITIAL_INVENTORY));
-    return INITIAL_INVENTORY;
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Collection References
+const ITEMS_COL = 'items';
+const TRANSACTIONS_COL = 'transactions';
+const INSTRUCTORS_COL = 'instructors';
+
+// --- Inventory Operations ---
+
+export const subscribeToInventory = (callback: (items: Item[]) => void) => {
+  const q = query(collection(db, ITEMS_COL), orderBy('lastUpdated', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Item));
+    callback(items);
+  });
+};
+
+export const addInventoryItem = async (item: Omit<Item, 'id'>) => {
+  await addDoc(collection(db, ITEMS_COL), {
+    ...item,
+    lastUpdated: new Date().toISOString()
+  });
+};
+
+export const updateInventoryItem = async (itemId: string, data: Partial<Item>) => {
+  const itemRef = doc(db, ITEMS_COL, itemId);
+  await updateDoc(itemRef, {
+    ...data,
+    lastUpdated: new Date().toISOString()
+  });
+};
+
+// --- Transaction Operations ---
+
+export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void) => {
+  // Order by timestamp desc
+  const q = query(collection(db, TRANSACTIONS_COL), orderBy('timestamp', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const transactions = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Transaction));
+    callback(transactions);
+  });
+};
+
+export const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+  await addDoc(collection(db, TRANSACTIONS_COL), {
+    ...transaction,
+    timestamp: new Date().toISOString()
+  });
+};
+
+// --- Instructor Operations ---
+
+export const subscribeToInstructors = (callback: (instructors: Instructor[]) => void) => {
+  const q = query(collection(db, INSTRUCTORS_COL), orderBy('name'));
+  return onSnapshot(q, (snapshot) => {
+    const instructors = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Instructor));
+    callback(instructors);
+  });
+};
+
+export const addInstructor = async (instructor: Omit<Instructor, 'id'>) => {
+  await addDoc(collection(db, INSTRUCTORS_COL), instructor);
+};
+
+export const updateInstructor = async (instructor: Instructor) => {
+  const ref = doc(db, INSTRUCTORS_COL, instructor.id);
+  const { id, ...data } = instructor; // remove ID from data payload
+  await updateDoc(ref, data);
+};
+
+export const deleteInstructor = async (instructorId: string) => {
+  await deleteDoc(doc(db, INSTRUCTORS_COL, instructorId));
+};
+
+// Seed initial instructors if collection is empty
+export const seedInitialInstructors = async () => {
+  const snapshot = await getDocs(collection(db, INSTRUCTORS_COL));
+  if (snapshot.empty) {
+    const batch = writeBatch(db);
+    INITIAL_INSTRUCTORS.forEach(inst => {
+      const docRef = doc(collection(db, INSTRUCTORS_COL)); // Auto ID
+      batch.set(docRef, { name: inst.name, password: inst.password });
+    });
+    await batch.commit();
+    console.log("Instructors seeded successfully");
   }
-  return JSON.parse(stored);
-};
-
-export const saveInventory = (items: Item[]) => {
-  localStorage.setItem(INV_KEY, JSON.stringify(items));
-};
-
-export const getTransactions = (): Transaction[] => {
-  const stored = localStorage.getItem(TRANS_KEY);
-  return stored ? JSON.parse(stored) : [];
-};
-
-export const addTransaction = (transaction: Transaction) => {
-  const current = getTransactions();
-  const updated = [transaction, ...current];
-  localStorage.setItem(TRANS_KEY, JSON.stringify(updated));
-};
-
-export const getInstructors = (): Instructor[] => {
-  const stored = localStorage.getItem(INST_KEY);
-  if (!stored) {
-    localStorage.setItem(INST_KEY, JSON.stringify(INITIAL_INSTRUCTORS));
-    return INITIAL_INSTRUCTORS;
-  }
-  return JSON.parse(stored);
-};
-
-export const saveInstructors = (instructors: Instructor[]) => {
-  localStorage.setItem(INST_KEY, JSON.stringify(instructors));
 };

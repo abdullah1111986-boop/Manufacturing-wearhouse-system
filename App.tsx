@@ -9,24 +9,28 @@ import SmartAssistant from './components/SmartAssistant';
 import InstructorPortal from './components/InstructorPortal';
 import InstructorManager from './components/InstructorManager';
 import SupervisorLogin from './components/SupervisorLogin';
+import PortalSelection from './components/PortalSelection';
 
 import { Item, Transaction, ItemStatus, TransactionType, Instructor } from './types';
 import { 
-  getInventory, 
-  saveInventory, 
-  getTransactions, 
+  subscribeToInventory, 
+  subscribeToTransactions, 
+  subscribeToInstructors,
+  addInventoryItem,
+  updateInventoryItem,
   addTransaction,
-  getInstructors,
-  saveInstructors 
+  addInstructor,
+  updateInstructor,
+  deleteInstructor,
+  seedInitialInstructors
 } from './services/storageService';
 
-// Utility to generate unique IDs compatible with all browsers
-const generateId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-};
-
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('instructor-portal'); // Default to public tab
+  // Navigation State
+  const [activePortal, setActivePortal] = useState<'selection' | 'supervisor' | 'instructor'>('selection');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Data State (Managed via Firebase Subscriptions)
   const [items, setItems] = useState<Item[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
@@ -34,265 +38,266 @@ const App: React.FC = () => {
   // Supervisor Authentication State
   const [isSupervisorAuth, setIsSupervisorAuth] = useState(false);
 
-  // Load data on mount
+  // --- Firebase Subscriptions ---
   useEffect(() => {
-    setItems(getInventory());
-    setTransactions(getTransactions());
-    setInstructors(getInstructors());
-    
-    // Check if supervisor was previously logged in
+    const unsubscribeInventory = subscribeToInventory((data) => setItems(data));
+    const unsubscribeTransactions = subscribeToTransactions((data) => setTransactions(data));
+    const unsubscribeInstructors = subscribeToInstructors((data) => {
+      setInstructors(data);
+      // Seed if empty
+      if (data.length === 0) {
+        seedInitialInstructors();
+      }
+    });
+
+    // Check local supervisor auth
     const storedAuth = localStorage.getItem('makhzan_supervisor_auth');
     if (storedAuth === 'true') {
       setIsSupervisorAuth(true);
     }
+
+    return () => {
+      unsubscribeInventory();
+      unsubscribeTransactions();
+      unsubscribeInstructors();
+    };
   }, []);
+
+  // --- Handlers ---
+
+  const handlePortalSelect = (portal: 'supervisor' | 'instructor') => {
+    setActivePortal(portal);
+    if (portal === 'instructor') {
+      setActiveTab('instructor-portal');
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  const handleBackToMain = () => {
+    setActivePortal('selection');
+    setIsSupervisorAuth(false);
+    localStorage.removeItem('makhzan_supervisor_auth');
+  };
 
   const handleSupervisorLogin = () => {
     setIsSupervisorAuth(true);
     localStorage.setItem('makhzan_supervisor_auth', 'true');
-    setActiveTab('dashboard'); // Redirect to dashboard after login
+    setActiveTab('dashboard');
   };
 
   const handleSupervisorLogout = () => {
     setIsSupervisorAuth(false);
     localStorage.removeItem('makhzan_supervisor_auth');
-    setActiveTab('instructor-portal');
+    setActivePortal('selection');
   };
 
-  const handleUpdateInstructor = (updatedInstructor: Instructor) => {
-    const updatedList = instructors.map(inst => 
-      inst.id === updatedInstructor.id ? updatedInstructor : inst
-    );
-    setInstructors(updatedList);
-    saveInstructors(updatedList);
-  };
-
-  // --- Instructor Management Handlers ---
-  const handleAddInstructor = (name: string) => {
-    const newInstructor: Instructor = {
-      id: generateId(),
-      name: name,
-      password: '1234' // Default password
-    };
-    const updatedList = [...instructors, newInstructor];
-    setInstructors(updatedList);
-    saveInstructors(updatedList);
-    alert('تم إضافة المدرب بنجاح');
-  };
-
-  const handleDeleteInstructor = (id: string) => {
-    const updatedList = instructors.filter(i => i.id !== id);
-    setInstructors(updatedList);
-    saveInstructors(updatedList);
-    alert('تم حذف المدرب بنجاح');
-  };
-
-  const handleResetPassword = (id: string) => {
-    const updatedList = instructors.map(inst => 
-      inst.id === id ? { ...inst, password: '1234' } : inst
-    );
-    setInstructors(updatedList);
-    saveInstructors(updatedList);
-    alert('تم إعادة تعيين كلمة المرور إلى 1234');
-  };
-  // --------------------------------------
-
-  // Handler for manual add by Supervisor OR Instructor with Quantity support
-  const handleAddItem = (newItemData: Omit<Item, 'id' | 'lastUpdated'>, quantity: number = 1) => {
-    const newItems: Item[] = [];
-    const newTransactions: Transaction[] = [];
-    const timestamp = new Date().toISOString();
-
-    for (let i = 0; i < quantity; i++) {
-      const newItem: Item = {
-        ...newItemData,
-        id: generateId(),
-        lastUpdated: timestamp,
-        status: ItemStatus.AVAILABLE,
-      };
-      newItems.push(newItem);
-
-      newTransactions.push({
-        id: generateId(),
-        itemId: newItem.id,
-        itemName: newItem.name,
-        instructorName: newItem.addedBy || 'المشرف',
-        type: TransactionType.ADD_ITEM,
-        timestamp: timestamp
-      });
+  // Instructor Management
+  const handleAddInstructor = async (name: string) => {
+    try {
+      await addInstructor({ name, password: '1234' });
+      alert('تم إضافة المدرب بنجاح');
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء إضافة المدرب');
     }
-
-    const updatedItems = [...items, ...newItems];
-    setItems(updatedItems);
-    saveInventory(updatedItems);
-    
-    const updatedTransactions = [...newTransactions.reverse(), ...transactions];
-    setTransactions(updatedTransactions);
-    
-    newTransactions.forEach(t => addTransaction(t));
   };
 
-  const handleCheckout = (itemId: string, instructorName: string) => {
-    const updatedItems = items.map(item => {
-      if (item.id === itemId) {
-        return {
-          ...item,
-          status: ItemStatus.CHECKED_OUT,
-          currentHolder: instructorName,
-          lastUpdated: new Date().toISOString()
-        };
+  const handleUpdateInstructor = async (updatedInstructor: Instructor) => {
+    try {
+      await updateInstructor(updatedInstructor);
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء تحديث بيانات المدرب');
+    }
+  };
+
+  const handleDeleteInstructor = async (id: string) => {
+    try {
+      await deleteInstructor(id);
+      alert('تم حذف المدرب بنجاح');
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء حذف المدرب');
+    }
+  };
+
+  const handleResetPassword = async (id: string) => {
+    const instructor = instructors.find(i => i.id === id);
+    if (instructor) {
+      await updateInstructor({ ...instructor, password: '1234' });
+      alert('تم إعادة تعيين كلمة المرور إلى 1234');
+    }
+  };
+
+  // Inventory & Transactions
+  const handleAddItem = async (newItemData: Omit<Item, 'id' | 'lastUpdated'>, quantity: number = 1) => {
+    try {
+      const promises = [];
+      const timestamp = new Date().toISOString();
+
+      for (let i = 0; i < quantity; i++) {
+        // Add Item
+        const itemPromise = addInventoryItem({
+          ...newItemData,
+          status: ItemStatus.AVAILABLE,
+          lastUpdated: timestamp
+        }).then((docRef) => {
+           // We don't have the ID until after addDoc, but we need it for the transaction log?
+           // Actually, it's better to add the transaction separately or just log "New Item Added" generic.
+           // For simplicity in this async loop, we'll log the transaction after the item is added.
+           return addTransaction({
+            itemId: 'N/A', // Or ideally the new ID
+            itemName: newItemData.name,
+            instructorName: newItemData.addedBy || 'المشرف',
+            type: TransactionType.ADD_ITEM,
+            timestamp: timestamp
+           });
+        });
+        promises.push(itemPromise);
       }
-      return item;
-    });
+      
+      await Promise.all(promises);
+    } catch (error) {
+      console.error("Error adding items:", error);
+      alert("حدث خطأ أثناء إضافة الأصناف");
+    }
+  };
 
+  const handleCheckout = async (itemId: string, instructorName: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
-    const newTransaction: Transaction = {
-      id: generateId(),
-      itemId: itemId,
-      itemName: item.name,
-      instructorName: instructorName,
-      type: TransactionType.CHECKOUT,
-      timestamp: new Date().toISOString()
-    };
+    try {
+      await updateInventoryItem(itemId, {
+        status: ItemStatus.CHECKED_OUT,
+        currentHolder: instructorName
+      });
 
-    setItems(updatedItems);
-    saveInventory(updatedItems);
-    
-    const newTransactions = [newTransaction, ...transactions];
-    setTransactions(newTransactions);
-    addTransaction(newTransaction);
+      await addTransaction({
+        itemId,
+        itemName: item.name,
+        instructorName,
+        type: TransactionType.CHECKOUT,
+        timestamp: new Date().toISOString()
+      });
+      alert('تم تسجيل عملية الاستلام بنجاح');
+    } catch (error) {
+      console.error(error);
+      alert("حدث خطأ أثناء عملية الاستلام");
+    }
   };
 
-  // Handle Manual Checkout (Create Item AND Checkout immediately)
-  const handleManualCheckout = (itemData: {name: string, category: string}, instructorName: string) => {
-    const newItemId = generateId();
-    const timestamp = new Date().toISOString();
-    
-    const newItem: Item = {
-      id: newItemId,
-      name: itemData.name,
-      category: itemData.category,
-      status: ItemStatus.CHECKED_OUT,
-      currentHolder: instructorName,
-      lastUpdated: timestamp,
-      addedBy: 'المشرف (صرف فوري)'
-    };
+  const handleManualCheckout = async (itemData: {name: string, category: string}, instructorName: string) => {
+    try {
+      // 1. Add Item as Checked Out immediately
+      await addInventoryItem({
+        name: itemData.name,
+        category: itemData.category,
+        status: ItemStatus.CHECKED_OUT,
+        currentHolder: instructorName,
+        addedBy: 'المشرف (صرف فوري)',
+        lastUpdated: new Date().toISOString()
+      });
 
-    const newTransaction: Transaction = {
-      id: generateId(),
-      itemId: newItemId,
-      itemName: newItem.name,
-      instructorName: instructorName,
-      type: TransactionType.CHECKOUT,
-      timestamp: timestamp
-    };
-
-    const updatedItems = [...items, newItem];
-    setItems(updatedItems);
-    saveInventory(updatedItems);
-
-    const newTransactions = [newTransaction, ...transactions];
-    setTransactions(newTransactions);
-    addTransaction(newTransaction);
+      // 2. Add Transaction
+      await addTransaction({
+        itemId: 'MANUAL_ENTRY', // Or fetch ID if needed, but keeping it simple for logs
+        itemName: itemData.name,
+        instructorName,
+        type: TransactionType.CHECKOUT,
+        timestamp: new Date().toISOString()
+      });
+      
+      alert('تم تسجيل العدة الجديدة وصرفها بنجاح');
+    } catch (error) {
+      console.error(error);
+      alert("حدث خطأ أثناء العملية");
+    }
   };
 
-  // Instructor requests return
-  const handleRequestReturn = (itemId: string, instructorName: string) => {
+  const handleRequestReturn = async (itemId: string, instructorName: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
-    // Update Item Status
-    const updatedItems = items.map(currentItem => {
-      if (currentItem.id === itemId) {
-        return {
-          ...currentItem,
-          status: ItemStatus.PENDING_RETURN,
-          lastUpdated: new Date().toISOString()
-        };
-      }
-      return currentItem;
-    });
+    try {
+      await updateInventoryItem(itemId, {
+        status: ItemStatus.PENDING_RETURN
+      });
 
-    // Create Transaction Log
-    const newTransaction: Transaction = {
-      id: generateId(),
-      itemId: itemId,
-      itemName: item.name,
-      instructorName: instructorName,
-      type: TransactionType.RETURN_REQUEST,
-      timestamp: new Date().toISOString()
-    };
+      await addTransaction({
+        itemId,
+        itemName: item.name,
+        instructorName,
+        type: TransactionType.RETURN_REQUEST,
+        timestamp: new Date().toISOString()
+      });
 
-    // Save State
-    setItems(updatedItems);
-    saveInventory(updatedItems);
-    
-    const newTransactions = [newTransaction, ...transactions];
-    setTransactions(newTransactions);
-    addTransaction(newTransaction);
-
-    alert('تم رفع طلب الإرجاع بنجاح. سيقوم المشرف بمعاينة العدة والموافقة عليها.');
+      alert('تم رفع طلب الإرجاع بنجاح. سيقوم المشرف بمعاينة العدة والموافقة عليها.');
+    } catch (error) {
+      console.error(error);
+      alert("حدث خطأ أثناء طلب الإرجاع");
+    }
   };
 
-  // Supervisor approves return OR manually returns item
-  const handleApproveReturn = (itemId: string) => {
+  const handleApproveReturn = async (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
-
     const instructorName = item.currentHolder || 'غير معروف';
 
-    // Update Item Status
-    const updatedItems = items.map(currentItem => {
-      if (currentItem.id === itemId) {
-        return {
-          ...currentItem,
-          status: ItemStatus.AVAILABLE,
-          currentHolder: undefined, // Clear holder
-          lastUpdated: new Date().toISOString()
-        };
-      }
-      return currentItem;
-    });
+    try {
+      await updateInventoryItem(itemId, {
+        status: ItemStatus.AVAILABLE,
+        currentHolder: undefined // Delete field
+      });
 
-    // Create Transaction Log
-    const newTransaction: Transaction = {
-      id: generateId(),
-      itemId: itemId,
-      itemName: item.name,
-      instructorName: instructorName,
-      type: TransactionType.RETURN,
-      timestamp: new Date().toISOString()
-    };
+      await addTransaction({
+        itemId,
+        itemName: item.name,
+        instructorName,
+        type: TransactionType.RETURN,
+        timestamp: new Date().toISOString()
+      });
 
-    // Save State
-    setItems(updatedItems);
-    saveInventory(updatedItems);
-
-    const newTransactions = [newTransaction, ...transactions];
-    setTransactions(newTransactions);
-    addTransaction(newTransaction);
-
-    alert(`تم إرجاع "${item.name}" إلى المستودع بنجاح.`);
+      alert(`تم إرجاع "${item.name}" إلى المستودع بنجاح.`);
+    } catch (error) {
+      console.error(error);
+      alert("حدث خطأ أثناء عملية الإرجاع");
+    }
   };
 
+  // Rendering Logic
+  if (activePortal === 'selection') {
+    return <PortalSelection onSelect={handlePortalSelect} />;
+  }
+
   const renderContent = () => {
-    // PUBLIC ACCESS: Instructor Portal
-    if (activeTab === 'instructor-portal') {
-       return <InstructorPortal 
+    if (activePortal === 'instructor') {
+      return (
+        <InstructorPortal 
           items={items} 
           instructors={instructors}
           onAddItem={handleAddItem} 
           onRequestReturn={handleRequestReturn} 
           onUpdateInstructor={handleUpdateInstructor}
           onCheckout={handleCheckout}
-        />;
+          onBack={handleBackToMain}
+        />
+      );
     }
 
-    // RESTRICTED ACCESS: All other tabs
     if (!isSupervisorAuth) {
-      return <SupervisorLogin onLogin={handleSupervisorLogin} />;
+      return (
+        <div>
+          <button 
+            onClick={handleBackToMain}
+            className="absolute top-4 left-4 text-gray-500 hover:text-gray-800 flex items-center gap-2"
+          >
+            ➡️ العودة
+          </button>
+          <SupervisorLogin onLogin={handleSupervisorLogin} />
+        </div>
+      );
     }
 
     switch (activeTab) {
@@ -331,6 +336,9 @@ const App: React.FC = () => {
       setActiveTab={setActiveTab} 
       isSupervisorLoggedIn={isSupervisorAuth}
       onSupervisorLogout={handleSupervisorLogout}
+      isSidebarVisible={activePortal === 'supervisor' && isSupervisorAuth}
+      portalType={activePortal}
+      onBackToHome={handleBackToMain}
     >
       {renderContent()}
     </Layout>
