@@ -6,9 +6,11 @@ import InventoryManager from './InventoryManager';
 interface WarehouseProps {
   items: Item[];
   onAddItem: (item: Omit<Item, 'id' | 'lastUpdated'>, quantity: number) => void;
+  onUpdate: (id: string, data: Partial<Item>) => void;
+  onDelete: (id: string) => void;
 }
 
-const Warehouse: React.FC<WarehouseProps> = ({ items, onAddItem }) => {
+const Warehouse: React.FC<WarehouseProps> = ({ items, onAddItem, onUpdate, onDelete }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'add'>('list');
 
   return (
@@ -49,7 +51,11 @@ const Warehouse: React.FC<WarehouseProps> = ({ items, onAddItem }) => {
                 العدد الكلي: {items.length}
               </span>
             </div>
-            <InventoryTable items={items} />
+            <InventoryTable 
+              items={items} 
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+            />
           </div>
         ) : (
           <InventoryManager onAddItem={onAddItem} />

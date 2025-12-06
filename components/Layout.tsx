@@ -7,6 +7,7 @@ interface LayoutProps {
   setActiveTab: (tab: string) => void;
   isSupervisorLoggedIn: boolean;
   onSupervisorLogout: () => void;
+  onSwitchToInstructor: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({ 
@@ -14,7 +15,8 @@ const Layout: React.FC<LayoutProps> = ({
   activeTab, 
   setActiveTab,
   isSupervisorLoggedIn,
-  onSupervisorLogout
+  onSupervisorLogout,
+  onSwitchToInstructor
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -42,9 +44,9 @@ const Layout: React.FC<LayoutProps> = ({
       ]
     },
     {
-      title: 'منطقة المدربين',
+      title: 'روابط سريعة',
       items: [
-        { id: 'instructor-portal', label: 'بوابة دخول المدربين', icon: '👨‍🏫', restricted: false },
+        { id: 'switch-to-instructor', label: 'الذهاب لبوابة المدربين', icon: '👨‍🏫', restricted: false, action: 'switch' },
       ]
     }
   ];
@@ -60,11 +62,20 @@ const Layout: React.FC<LayoutProps> = ({
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
+  const handleNavClick = (item: any) => {
+    if (item.action === 'switch') {
+      onSwitchToInstructor();
+    } else {
+      setActiveTab(item.id);
+    }
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center shadow-md z-20">
-        <div className="font-bold text-lg">نظام العهدة</div>
+        <div className="font-bold text-lg">نظام العهدة (مشرف)</div>
         <button onClick={toggleSidebar} className="p-2 focus:outline-none">
           {isSidebarOpen ? '✖️' : '☰'}
         </button>
@@ -86,7 +97,7 @@ const Layout: React.FC<LayoutProps> = ({
       `}>
         <div className="p-6 text-center border-b border-slate-700 bg-slate-900">
           <h1 className="text-2xl font-bold text-blue-400">تقنية التصنيع</h1>
-          <p className="text-xs text-slate-400 mt-1">نظام إدارة المستودع</p>
+          <p className="text-xs text-slate-400 mt-1">بوابة المشرفين</p>
         </div>
         
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -102,12 +113,9 @@ const Layout: React.FC<LayoutProps> = ({
                   return (
                     <button
                       key={item.id}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setIsSidebarOpen(false); // Close sidebar on mobile after selection
-                      }}
+                      onClick={() => handleNavClick(item)}
                       className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                        activeTab === item.id
+                        activeTab === item.id && !item.action
                           ? 'bg-blue-600 text-white shadow-md translate-x-1'
                           : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                       }`}
@@ -119,6 +127,7 @@ const Layout: React.FC<LayoutProps> = ({
                         <span className="font-medium text-sm">{item.label}</span>
                       </div>
                       {isLocked && <span className="text-xs text-gray-500">🔒</span>}
+                      {item.action === 'switch' && <span className="text-xs text-gray-400">↪️</span>}
                     </button>
                   );
                 })}
@@ -128,14 +137,12 @@ const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         <div className="p-4 bg-slate-900 text-xs text-slate-400 mt-auto border-t border-slate-700">
-          {isSupervisorLoggedIn && (
-            <button 
-              onClick={onSupervisorLogout}
-              className="w-full mb-4 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white py-2 rounded-lg transition-colors font-bold"
-            >
-              تسجيل خروج المشرف
-            </button>
-          )}
+          <button 
+            onClick={onSupervisorLogout}
+            className="w-full mb-4 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white py-2 rounded-lg transition-colors font-bold flex items-center justify-center gap-2"
+          >
+             <span>🚪</span> القائمة الرئيسية / خروج
+          </button>
 
           <div className="mb-2">
             <span className="block font-bold text-slate-500 mb-1">إشراف:</span>

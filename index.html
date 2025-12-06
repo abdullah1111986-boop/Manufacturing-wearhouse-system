@@ -11,6 +11,24 @@
         font-family: 'Cairo', sans-serif;
         background-color: #f3f4f6;
       }
+
+      /* Print Styles */
+      @media print {
+        @page { size: landscape; margin: 1cm; }
+        body { background-color: white; -webkit-print-color-adjust: exact; }
+        aside, header, .no-print, button { display: none !important; }
+        main { margin: 0; padding: 0; height: auto; overflow: visible; }
+        .shadow-sm, .shadow-lg, .shadow-md { box-shadow: none !important; border: 1px solid #ddd; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; }
+        th, td { border: 1px solid #ccc; padding: 4px; color: black !important; }
+        thead { background-color: #f0f0f0 !important; color: black !important; }
+        /* Show print header */
+        .print-header { display: block !important; margin-bottom: 20px; text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        /* Hide scrollbars */
+        .overflow-auto, .overflow-x-auto { overflow: visible !important; }
+      }
+      
+      .print-header { display: none; }
     </style>
   <script type="importmap">
 {

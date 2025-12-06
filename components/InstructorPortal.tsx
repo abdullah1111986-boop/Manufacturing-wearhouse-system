@@ -4,19 +4,21 @@ import { Item, ItemStatus, Instructor } from '../types';
 interface InstructorPortalProps {
   items: Item[];
   instructors: Instructor[];
-  onAddItem: (item: Omit<Item, 'id' | 'lastUpdated'>, quantity: number) => void;
+  onManualCheckout: (itemData: {name: string, category: string}, quantity: number, instructorName: string) => void;
   onRequestReturn: (itemId: string, instructorName: string) => void;
   onUpdateInstructor: (instructor: Instructor) => void;
   onCheckout: (itemId: string, instructorName: string) => void;
+  onSwitchToSupervisor: () => void;
 }
 
 const InstructorPortal: React.FC<InstructorPortalProps> = ({ 
   items, 
   instructors, 
-  onAddItem, 
+  onManualCheckout, 
   onRequestReturn,
   onUpdateInstructor,
-  onCheckout
+  onCheckout,
+  onSwitchToSupervisor
 }) => {
   const [currentUser, setCurrentUser] = useState<Instructor | null>(null);
   
@@ -97,20 +99,21 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
     setPassMsg({ text: 'تم تغيير كلمة المرور بنجاح', type: 'success' });
   };
 
-  const handleAddItemSubmit = (e: React.FormEvent) => {
+  // Handler for manual checkout (Instructor adding item to their custody)
+  const handleManualCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newItem.name && newItem.category && quantity > 0 && currentUser) {
-      onAddItem({
-        name: newItem.name,
-        category: newItem.category,
-        status: ItemStatus.AVAILABLE,
-        addedBy: currentUser.name
-      }, quantity);
+      onManualCheckout(
+        { name: newItem.name, category: newItem.category }, 
+        quantity, 
+        currentUser.name
+      );
       
       setNewItem({ name: '', category: '' });
       setQuantity(1);
-      setIsManualEntry(false); // Switch back to list view to let them select it if needed
-      alert('تم تسجيل العدة الجديدة في النظام بنجاح. يمكنك الآن اختيارها من القائمة.');
+      setIsManualEntry(false); 
+      alert('تم تسجيل العدة بنجاح وإضافتها إلى عهدتك مباشرة.');
+      setActiveTab('my-items');
     }
   };
 
@@ -136,6 +139,15 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
   if (!currentUser) {
     return (
       <div className="max-w-md mx-auto mt-10 p-4">
+        <div className="flex justify-end mb-4">
+            <button 
+              onClick={onSwitchToSupervisor}
+              className="text-gray-500 hover:text-blue-600 flex items-center gap-2 text-sm bg-white px-3 py-2 rounded-lg shadow-sm"
+            >
+              🛡️ الذهاب لبوابة المشرفين
+            </button>
+        </div>
+
         <div className="bg-white p-8 rounded-xl shadow-lg border-t-4 border-blue-600">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-800">بوابة المدربين</h2>
@@ -199,12 +211,20 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
           <h2 className="text-xl font-bold text-gray-800">مرحباً، {currentUser.name}</h2>
           <p className="text-sm text-gray-500">لوحة تحكم المدرب</p>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="text-red-600 text-sm font-semibold hover:bg-red-50 px-3 py-1 rounded-lg transition"
-        >
-          تسجيل خروج
-        </button>
+        <div className="flex gap-2">
+           <button 
+             onClick={onSwitchToSupervisor}
+             className="text-gray-600 text-sm font-semibold hover:bg-gray-100 px-3 py-1 rounded-lg transition flex items-center gap-1 border border-gray-200"
+           >
+             🛡️ بوابة المشرفين
+           </button>
+           <button 
+             onClick={handleLogout}
+             className="text-red-600 text-sm font-semibold hover:bg-red-50 px-3 py-1 rounded-lg transition flex items-center gap-1 border border-red-100"
+           >
+             🚪 تسجيل خروج
+           </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200">
@@ -290,7 +310,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
             </h3>
             <p className="text-gray-500 text-sm mt-1">
               {isManualEntry 
-                ? 'تسجيل عدة جديدة غير موجودة في القائمة لإضافتها للمخزون' 
+                ? 'تسجيل عدة جديدة وإضافتها لعهدتك مباشرة' 
                 : 'اختر العدة التي تحتاجها من قائمة المخزون المتاح حالياً'}
             </p>
           </div>
@@ -305,7 +325,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                 className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
               />
               <label htmlFor="manualMode" className="text-gray-700 font-semibold cursor-pointer select-none">
-                العدة غير موجودة في القائمة؟ (تفعيل الإدخال اليدوي)
+                العدة غير موجودة في القائمة؟ (تسجيل يدوي واستلام فوري)
               </label>
             </div>
           </div>
@@ -349,9 +369,9 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
               </button>
             </form>
           ) : (
-            <form onSubmit={handleAddItemSubmit} className="space-y-4 max-w-lg animate-fade-in">
+            <form onSubmit={handleManualCheckoutSubmit} className="space-y-4 max-w-lg animate-fade-in">
               <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4 text-sm text-green-800">
-                أنت تقوم الآن بإضافة عدة جديدة للمخزون. بعد الإضافة، ستظهر في القائمة لتتمكن من استلامها.
+                أنت تقوم الآن بتسجيل عدة جديدة واستلامها فوراً لتصبح تحت عهدتك. لن تظهر هذه العدة كـ "متاحة" بل ستسجل كـ "معارة" لك.
               </div>
               
               <div>
@@ -398,7 +418,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
               </div>
 
               <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-md mt-4">
-                تسجيل في المخزون
+                تسجيل واستلام في عهدتي
               </button>
             </form>
           )}

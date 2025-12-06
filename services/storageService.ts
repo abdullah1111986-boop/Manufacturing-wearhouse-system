@@ -49,7 +49,7 @@ export const subscribeToInventory = (callback: (items: Item[]) => void) => {
   });
 };
 
-export const addInventoryItem = async (item: Omit<Item, 'id'>) => {
+export const addInventoryItem = async (item: Omit<Item, 'id' | 'lastUpdated'>) => {
   await addDoc(collection(db, ITEMS_COL), {
     ...item,
     lastUpdated: new Date().toISOString()
@@ -62,6 +62,10 @@ export const updateInventoryItem = async (itemId: string, data: Partial<Item>) =
     ...data,
     lastUpdated: new Date().toISOString()
   });
+};
+
+export const deleteInventoryItem = async (itemId: string) => {
+  await deleteDoc(doc(db, ITEMS_COL, itemId));
 };
 
 // --- Transaction Operations ---
