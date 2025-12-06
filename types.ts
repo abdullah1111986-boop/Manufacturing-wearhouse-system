@@ -24,10 +24,10 @@ export interface Item {
   name: string;
   category: string;
   status: ItemStatus;
-  currentHolder?: string; // Name of the instructor who has it
+  currentHolder?: string | null; // Updated to allow null for Firestore compatibility
   lastUpdated: string;
   addedBy?: string;
-  rejectionReason?: string | null; // Reason why return was rejected (Updated to allow null)
+  rejectionReason?: string | null;
 }
 
 export interface Transaction {
@@ -37,7 +37,7 @@ export interface Transaction {
   instructorName: string;
   type: TransactionType;
   timestamp: string;
-  notes?: string; // Additional notes (e.g. rejection reason)
+  notes?: string;
 }
 
 export interface DashboardStats {

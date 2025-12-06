@@ -165,9 +165,10 @@ const App: React.FC = () => {
     const item = items.find(i => i.id === itemId);
     if (item) {
       const holder = item.currentHolder || 'غير معروف';
+      // Use null instead of undefined for Firestore compatibility
       await updateInventoryItem(itemId, { 
         status: ItemStatus.AVAILABLE, 
-        currentHolder: undefined,
+        currentHolder: null,
         rejectionReason: null
       });
 
