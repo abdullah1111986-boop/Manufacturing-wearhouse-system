@@ -266,7 +266,14 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                 <tbody className="divide-y divide-gray-100">
                   {myItems.map(item => (
                     <tr key={item.id}>
-                      <td className="p-4 font-bold">{item.name}</td>
+                      <td className="p-4 font-bold">
+                        {item.name}
+                        {item.rejectionReason && (
+                          <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded border border-red-100">
+                             🛑 تم رفض الإرجاع: {item.rejectionReason}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4 text-gray-600">{item.category}</td>
                       <td className="p-4 text-sm text-gray-500">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
                       <td className="p-4">
@@ -288,7 +295,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                             }}
                             className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 transition shadow-sm whitespace-nowrap"
                           >
-                            رفع طلب إرجاع
+                            {item.rejectionReason ? 'إعادة طلب الإرجاع' : 'رفع طلب إرجاع'}
                           </button>
                         )}
                       </td>

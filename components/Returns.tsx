@@ -4,11 +4,16 @@ import { Item, ItemStatus } from '../types';
 interface ReturnsProps {
   items: Item[];
   onApproveReturn: (itemId: string) => void;
+  onRejectReturn: (itemId: string, reason: string) => void;
 }
 
-const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn }) => {
+const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectReturn }) => {
   const [activeView, setActiveView] = useState<'requests' | 'manual'>('requests');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // State for rejection logic
+  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const pendingReturns = items.filter(item => item.status === ItemStatus.PENDING_RETURN);
   const checkedOutItems = items.filter(item => item.status === ItemStatus.CHECKED_OUT);
@@ -17,6 +22,26 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn }) => {
     item.name.includes(searchTerm) || 
     (item.currentHolder && item.currentHolder.includes(searchTerm))
   );
+
+  const handleRejectClick = (itemId: string) => {
+    setRejectingItemId(itemId);
+    setRejectionReason('');
+  };
+
+  const submitRejection = () => {
+    if (rejectingItemId && rejectionReason.trim()) {
+      onRejectReturn(rejectingItemId, rejectionReason);
+      setRejectingItemId(null);
+      setRejectionReason('');
+    } else {
+      alert('يجب كتابة سبب الرفض');
+    }
+  };
+
+  const cancelRejection = () => {
+    setRejectingItemId(null);
+    setRejectionReason('');
+  };
 
   return (
     <div className="space-y-6">
@@ -64,7 +89,7 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn }) => {
                     <th className="p-4">الفئة</th>
                     <th className="p-4">المدرب</th>
                     <th className="p-4">تاريخ الطلب</th>
-                    <th className="p-4">الإجراء</th>
+                    <th className="p-4 text-center">الإجراء</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -75,16 +100,51 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn }) => {
                       <td className="p-4 text-gray-800">{item.currentHolder}</td>
                       <td className="p-4 text-sm text-gray-500">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
                       <td className="p-4">
-                        <button
-                          onClick={() => {
-                            if(confirm('هل تم استلام العدة ومعاينتها؟')) {
-                              onApproveReturn(item.id);
-                            }
-                          }}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition shadow-sm"
-                        >
-                          تأكيد الاستلام
-                        </button>
+                        {rejectingItemId === item.id ? (
+                          <div className="flex flex-col gap-2 bg-white p-2 rounded shadow-sm border border-red-200">
+                            <input
+                              type="text"
+                              value={rejectionReason}
+                              onChange={(e) => setRejectionReason(e.target.value)}
+                              placeholder="سبب الرفض..."
+                              className="w-full p-2 text-sm border border-gray-300 rounded focus:border-red-500 outline-none"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={submitRejection}
+                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 flex-1"
+                              >
+                                تأكيد الرفض
+                              </button>
+                              <button
+                                onClick={cancelRejection}
+                                className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-300"
+                              >
+                                إلغاء
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                if(confirm('هل تم استلام العدة ومعاينتها؟')) {
+                                  onApproveReturn(item.id);
+                                }
+                              }}
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition shadow-sm"
+                            >
+                              قبول واستلام
+                            </button>
+                            <button
+                              onClick={() => handleRejectClick(item.id)}
+                              className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition shadow-sm"
+                            >
+                              رفض الطلب
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

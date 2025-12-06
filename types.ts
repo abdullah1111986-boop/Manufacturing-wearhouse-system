@@ -9,7 +9,8 @@ export enum TransactionType {
   CHECKOUT = 'استلام (خروج)',
   RETURN = 'تسليم (رجوع)',
   ADD_ITEM = 'إضافة صنف جديد',
-  RETURN_REQUEST = 'طلب إرجاع'
+  RETURN_REQUEST = 'طلب إرجاع',
+  RETURN_REJECTED = 'رفض إرجاع'
 }
 
 export interface Instructor {
@@ -26,6 +27,7 @@ export interface Item {
   currentHolder?: string; // Name of the instructor who has it
   lastUpdated: string;
   addedBy?: string;
+  rejectionReason?: string; // Reason why return was rejected
 }
 
 export interface Transaction {
@@ -35,6 +37,7 @@ export interface Transaction {
   instructorName: string;
   type: TransactionType;
   timestamp: string;
+  notes?: string; // Additional notes (e.g. rejection reason)
 }
 
 export interface DashboardStats {

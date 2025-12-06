@@ -6,9 +6,11 @@ interface ActivityLogProps {
 }
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
-  // Filter transactions to only show CHECKOUT and RETURN types as requested
+  // Filter transactions to only show relevant types
   const filteredTransactions = transactions.filter(t => 
-    t.type === TransactionType.CHECKOUT || t.type === TransactionType.RETURN
+    t.type === TransactionType.CHECKOUT || 
+    t.type === TransactionType.RETURN ||
+    t.type === TransactionType.RETURN_REJECTED
   );
 
   const handlePrint = () => {
@@ -18,7 +20,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
   const handleExportCSV = () => {
     // Add BOM for Excel Arabic support
     const BOM = "\uFEFF";
-    const headers = ['التاريخ', 'الوقت', 'المدرب', 'نوع العملية', 'اسم العدة'];
+    const headers = ['التاريخ', 'الوقت', 'المدرب', 'نوع العملية', 'اسم العدة', 'ملاحظات'];
     
     const rows = filteredTransactions.map(t => {
       const date = new Date(t.timestamp);
@@ -27,7 +29,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
         date.toLocaleTimeString('en-US', { hour12: false }),
         t.instructorName,
         t.type,
-        t.itemName
+        t.itemName,
+        t.notes || ''
       ].join(',');
     });
 
@@ -89,6 +92,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
                   <th className="p-4">المدرب</th>
                   <th className="p-4">العملية</th>
                   <th className="p-4">العدة</th>
+                  <th className="p-4">ملاحظات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -103,12 +107,16 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
                      <td className="p-4 font-bold text-gray-800">{t.instructorName}</td>
                      <td className="p-4">
                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          t.type === TransactionType.CHECKOUT ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                          t.type === TransactionType.CHECKOUT ? 'bg-red-100 text-red-600' : 
+                          t.type === TransactionType.RETURN ? 'bg-green-100 text-green-600' :
+                          t.type === TransactionType.RETURN_REJECTED ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100'
                        }`}>
-                         {t.type === TransactionType.CHECKOUT ? 'استلام (خروج)' : 'تسليم (إرجاع)'}
+                         {t.type}
                        </span>
                      </td>
                      <td className="p-4 text-gray-700">{t.itemName}</td>
+                     <td className="p-4 text-gray-500 text-sm italic">{t.notes || '-'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -103,7 +103,8 @@ const App: React.FC = () => {
     if (item && item.status === ItemStatus.AVAILABLE) {
       await updateInventoryItem(itemId, { 
         status: ItemStatus.CHECKED_OUT, 
-        currentHolder: instructorName 
+        currentHolder: instructorName,
+        rejectionReason: null // Clear any previous rejection
       });
 
       await addTransaction({
@@ -145,9 +146,11 @@ const App: React.FC = () => {
   const handleRequestReturn = async (itemId: string, instructorName: string) => {
     const item = items.find(i => i.id === itemId);
     if (item) {
-       await updateInventoryItem(itemId, { status: ItemStatus.PENDING_RETURN });
-       // No transaction log for request, only for completion, or maybe a separate type?
-       // Existing types include RETURN_REQUEST
+       await updateInventoryItem(itemId, { 
+         status: ItemStatus.PENDING_RETURN,
+         rejectionReason: null // Reset rejection reason on new request
+       });
+       
        await addTransaction({
          itemId: item.id,
          itemName: item.name,
@@ -164,7 +167,8 @@ const App: React.FC = () => {
       const holder = item.currentHolder || 'غير معروف';
       await updateInventoryItem(itemId, { 
         status: ItemStatus.AVAILABLE, 
-        currentHolder: undefined 
+        currentHolder: undefined,
+        rejectionReason: null
       });
 
       await addTransaction({
@@ -176,6 +180,28 @@ const App: React.FC = () => {
       });
       
       alert(`تم إرجاع "${item.name}" للمستودع بنجاح`);
+    }
+  };
+
+  const handleRejectReturn = async (itemId: string, reason: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (item) {
+      // Return status to CHECKED_OUT so instructor sees they still have it
+      await updateInventoryItem(itemId, { 
+        status: ItemStatus.CHECKED_OUT,
+        rejectionReason: reason
+      });
+
+      await addTransaction({
+        itemId: item.id,
+        itemName: item.name,
+        instructorName: item.currentHolder || 'غير معروف',
+        type: TransactionType.RETURN_REJECTED,
+        timestamp: '',
+        notes: reason
+      });
+
+      alert(`تم رفض طلب الإرجاع للصنف "${item.name}". ستظهر الملاحظات للمدرب.`);
     }
   };
 
@@ -265,6 +291,7 @@ const App: React.FC = () => {
             <Returns 
               items={items} 
               onApproveReturn={handleApproveReturn} 
+              onRejectReturn={handleRejectReturn}
             />
           )}
           {activeTab === 'warehouse' && (
