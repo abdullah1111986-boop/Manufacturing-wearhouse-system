@@ -57,25 +57,25 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
         <p className="text-sm mt-2">تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
       </div>
 
-      <div className="flex justify-between items-center mb-4 no-print">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 no-print">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800">سجل حركة العهد</h2>
-          <span className="text-sm bg-gray-200 px-3 py-1 rounded-full text-gray-600">
+          <span className="text-xs md:text-sm bg-gray-200 px-3 py-1 rounded-full text-gray-600">
              العدد: {filteredTransactions.length}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto">
           <button 
             onClick={handleExportCSV}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm font-bold shadow-sm"
+            className="flex-1 md:flex-none justify-center bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-xs md:text-sm font-bold shadow-sm"
           >
             <span>📊</span> تصدير Excel
           </button>
           <button 
             onClick={handlePrint}
-            className="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition flex items-center gap-2 text-sm font-bold shadow-sm"
+            className="flex-1 md:flex-none justify-center bg-slate-700 text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition flex items-center gap-2 text-xs md:text-sm font-bold shadow-sm"
           >
-            <span>🖨️</span> طباعة التقرير
+            <span>🖨️</span> طباعة
           </button>
         </div>
       </div>
@@ -85,28 +85,28 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
           <div className="text-center text-gray-500 py-8">لا توجد عمليات استلام أو تسليم مسجلة حتى الآن</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right">
-              <thead className="bg-gray-100 text-gray-700 border-b border-gray-200">
+            <table className="w-full text-right min-w-[600px] md:min-w-full">
+              <thead className="bg-gray-100 text-gray-700 border-b border-gray-200 text-xs md:text-sm">
                 <tr>
-                  <th className="p-4">التاريخ</th>
-                  <th className="p-4">المدرب</th>
-                  <th className="p-4">العملية</th>
-                  <th className="p-4">العدة</th>
-                  <th className="p-4">ملاحظات</th>
+                  <th className="p-2 md:p-4">التاريخ</th>
+                  <th className="p-2 md:p-4">المدرب</th>
+                  <th className="p-2 md:p-4">العملية</th>
+                  <th className="p-2 md:p-4">العدة</th>
+                  <th className="p-2 md:p-4">ملاحظات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
                 {filteredTransactions.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
-                     <td className="p-4 text-sm text-gray-600 whitespace-nowrap">
+                     <td className="p-2 md:p-4 text-gray-600 whitespace-nowrap">
                        {new Date(t.timestamp).toLocaleDateString('ar-SA')} 
-                       <span className="text-xs text-gray-400 block">
+                       <span className="text-gray-400 block text-[10px] md:text-xs">
                          {new Date(t.timestamp).toLocaleTimeString('en-US', { hour12: false })}
                        </span>
                      </td>
-                     <td className="p-4 font-bold text-gray-800">{t.instructorName}</td>
-                     <td className="p-4">
-                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                     <td className="p-2 md:p-4 font-bold text-gray-800">{t.instructorName}</td>
+                     <td className="p-2 md:p-4">
+                       <span className={`px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap ${
                           t.type === TransactionType.CHECKOUT ? 'bg-red-100 text-red-600' : 
                           t.type === TransactionType.RETURN ? 'bg-green-100 text-green-600' :
                           t.type === TransactionType.RETURN_REJECTED ? 'bg-orange-100 text-orange-700' :
@@ -115,8 +115,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
                          {t.type}
                        </span>
                      </td>
-                     <td className="p-4 text-gray-700">{t.itemName}</td>
-                     <td className="p-4 text-gray-500 text-sm italic">{t.notes || '-'}</td>
+                     <td className="p-2 md:p-4 text-gray-700">{t.itemName}</td>
+                     <td className="p-2 md:p-4 text-gray-500 italic truncate max-w-[150px]">{t.notes || '-'}</td>
                   </tr>
                 ))}
               </tbody>

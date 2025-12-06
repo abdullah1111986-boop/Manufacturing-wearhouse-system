@@ -70,13 +70,13 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
       <div className="flex justify-end gap-2 mb-2 no-print">
         <button 
           onClick={handleExportCSV}
-          className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition flex items-center gap-2 text-xs font-bold"
+          className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition flex items-center gap-2 text-xs font-bold shadow-sm"
         >
           <span>📊</span> تصدير Excel
         </button>
         <button 
           onClick={handlePrint}
-          className="bg-slate-700 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition flex items-center gap-2 text-xs font-bold"
+          className="bg-slate-700 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition flex items-center gap-2 text-xs font-bold shadow-sm"
         >
           <span>🖨️</span> طباعة القائمة
         </button>
@@ -84,31 +84,31 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead className="bg-slate-800 text-white">
+          <table className="w-full text-right min-w-[600px] md:min-w-full">
+            <thead className="bg-slate-800 text-white text-xs md:text-sm">
               <tr>
-                <th className="p-4 w-12">#</th>
-                <th className="p-4">اسم الصنف</th>
-                <th className="p-4">الفئة</th>
-                <th className="p-4">الحالة</th>
-                <th className="p-4">المدرب الحالي</th>
-                <th className="p-4">آخر تحديث</th>
-                {(onUpdate || onDelete) && <th className="p-4 text-center no-print">الإجراءات</th>}
+                <th className="p-2 md:p-4 w-10 md:w-12">#</th>
+                <th className="p-2 md:p-4">اسم الصنف</th>
+                <th className="p-2 md:p-4">الفئة</th>
+                <th className="p-2 md:p-4">الحالة</th>
+                <th className="p-2 md:p-4">المدرب الحالي</th>
+                <th className="p-2 md:p-4 whitespace-nowrap">آخر تحديث</th>
+                {(onUpdate || onDelete) && <th className="p-2 md:p-4 text-center no-print">الإجراءات</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
               {items.map((item, idx) => (
                 <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="p-4 text-gray-500">{idx + 1}</td>
+                  <td className="p-2 md:p-4 text-gray-500">{idx + 1}</td>
                   
                   {/* Name Column */}
-                  <td className="p-4 font-semibold text-gray-800">
+                  <td className="p-2 md:p-4 font-semibold text-gray-800">
                     {editingId === item.id ? (
                       <input 
                         type="text" 
                         value={editForm.name}
                         onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                        className="w-full p-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full p-1.5 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs"
                       />
                     ) : (
                       item.name
@@ -116,12 +116,12 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
                   </td>
 
                   {/* Category Column */}
-                  <td className="p-4 text-gray-600">
+                  <td className="p-2 md:p-4 text-gray-600">
                     {editingId === item.id ? (
                       <select
                         value={editForm.category}
                         onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                        className="w-full p-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="w-full p-1.5 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white text-xs"
                       >
                         <option value="عدد يدوية">عدد يدوية</option>
                         <option value="أجهزة قياس">أجهزة قياس</option>
@@ -131,12 +131,12 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
                         <option value="أخرى">أخرى</option>
                       </select>
                     ) : (
-                      <span className="bg-gray-100 px-2 py-1 rounded text-xs">{item.category}</span>
+                      <span className="bg-gray-100 px-2 py-1 rounded text-[10px] md:text-xs">{item.category}</span>
                     )}
                   </td>
 
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  <td className="p-2 md:p-4">
+                    <span className={`px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap ${
                       item.status === ItemStatus.AVAILABLE 
                         ? 'bg-green-100 text-green-700' 
                         : 'bg-red-100 text-red-700'
@@ -144,27 +144,27 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
                       {item.status}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-700">{item.currentHolder || '-'}</td>
-                  <td className="p-4 text-gray-500 text-sm">
+                  <td className="p-2 md:p-4 text-gray-700">{item.currentHolder || '-'}</td>
+                  <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">
                     {new Date(item.lastUpdated).toLocaleDateString('ar-SA')}
                   </td>
 
                   {/* Actions Column */}
                   {(onUpdate || onDelete) && (
-                    <td className="p-4 text-center no-print">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="p-2 md:p-4 text-center no-print">
+                      <div className="flex items-center justify-center gap-1 md:gap-2">
                         {editingId === item.id ? (
                           <>
                             <button 
                               onClick={() => saveEdit(item.id)}
-                              className="bg-green-100 text-green-700 p-2 rounded hover:bg-green-200 transition"
+                              className="bg-green-100 text-green-700 p-1.5 md:p-2 rounded hover:bg-green-200 transition"
                               title="حفظ"
                             >
                               💾
                             </button>
                             <button 
                               onClick={cancelEdit}
-                              className="bg-gray-100 text-gray-700 p-2 rounded hover:bg-gray-200 transition"
+                              className="bg-gray-100 text-gray-700 p-1.5 md:p-2 rounded hover:bg-gray-200 transition"
                               title="إلغاء"
                             >
                               ❌
@@ -175,7 +175,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
                             {onUpdate && (
                               <button 
                                 onClick={() => startEdit(item)}
-                                className="bg-blue-50 text-blue-600 p-2 rounded hover:bg-blue-100 transition"
+                                className="bg-blue-50 text-blue-600 p-1.5 md:p-2 rounded hover:bg-blue-100 transition"
                                 title="تعديل"
                               >
                                 ✏️
@@ -188,7 +188,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onUpdate, onDele
                                     onDelete(item.id);
                                   }
                                 }}
-                                className="bg-red-50 text-red-600 p-2 rounded hover:bg-red-100 transition"
+                                className="bg-red-50 text-red-600 p-1.5 md:p-2 rounded hover:bg-red-100 transition"
                                 title="حذف"
                               >
                                 🗑️

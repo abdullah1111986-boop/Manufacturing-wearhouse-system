@@ -46,10 +46,10 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-gray-200 pb-2">
+      <div className="flex gap-2 md:gap-4 border-b border-gray-200 pb-2 overflow-x-auto whitespace-nowrap">
         <button
           onClick={() => setActiveView('requests')}
-          className={`pb-2 px-4 font-bold transition-colors border-b-4 ${
+          className={`pb-2 px-2 md:px-4 font-bold transition-colors border-b-4 text-sm md:text-base ${
             activeView === 'requests' 
               ? 'border-yellow-500 text-yellow-700' 
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -59,7 +59,7 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
         </button>
         <button
           onClick={() => setActiveView('manual')}
-          className={`pb-2 px-4 font-bold transition-colors border-b-4 ${
+          className={`pb-2 px-2 md:px-4 font-bold transition-colors border-b-4 text-sm md:text-base ${
             activeView === 'manual' 
               ? 'border-blue-500 text-blue-700' 
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -72,8 +72,8 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
       {activeView === 'requests' ? (
         <div className="animate-fade-in space-y-4">
           <div className="bg-yellow-50 border-r-4 border-yellow-400 p-4 rounded-lg mb-6">
-            <h2 className="text-lg font-bold text-yellow-800">طلبات الإرجاع المعلقة</h2>
-            <p className="text-yellow-700">هذه القائمة تحتوي على العدد التي طلب المدربون إرجاعها. يرجى معاينة العدة ثم تأكيد الاستلام.</p>
+            <h2 className="text-base md:text-lg font-bold text-yellow-800">طلبات الإرجاع المعلقة</h2>
+            <p className="text-yellow-700 text-sm md:text-base">هذه القائمة تحتوي على العدد التي طلب المدربون إرجاعها. يرجى معاينة العدة ثم تأكيد الاستلام.</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -82,82 +82,84 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
                 لا توجد طلبات إرجاع معلقة حالياً
               </div>
             ) : (
-              <table className="w-full text-right">
-                <thead className="bg-yellow-100 text-yellow-900">
-                  <tr>
-                    <th className="p-4">اسم العدة</th>
-                    <th className="p-4">الفئة</th>
-                    <th className="p-4">المدرب</th>
-                    <th className="p-4">تاريخ الطلب</th>
-                    <th className="p-4 text-center">الإجراء</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {pendingReturns.map(item => (
-                    <tr key={item.id} className="hover:bg-yellow-50 transition">
-                      <td className="p-4 font-bold">{item.name}</td>
-                      <td className="p-4 text-gray-600">{item.category}</td>
-                      <td className="p-4 text-gray-800">{item.currentHolder}</td>
-                      <td className="p-4 text-sm text-gray-500">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
-                      <td className="p-4">
-                        {rejectingItemId === item.id ? (
-                          <div className="flex flex-col gap-2 bg-white p-2 rounded shadow-sm border border-red-200">
-                            <input
-                              type="text"
-                              value={rejectionReason}
-                              onChange={(e) => setRejectionReason(e.target.value)}
-                              placeholder="سبب الرفض..."
-                              className="w-full p-2 text-sm border border-gray-300 rounded focus:border-red-500 outline-none"
-                              autoFocus
-                            />
-                            <div className="flex gap-2">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right min-w-[600px] md:min-w-full">
+                  <thead className="bg-yellow-100 text-yellow-900 text-xs md:text-sm">
+                    <tr>
+                      <th className="p-2 md:p-4">اسم العدة</th>
+                      <th className="p-2 md:p-4">الفئة</th>
+                      <th className="p-2 md:p-4">المدرب</th>
+                      <th className="p-2 md:p-4">تاريخ الطلب</th>
+                      <th className="p-2 md:p-4 text-center">الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
+                    {pendingReturns.map(item => (
+                      <tr key={item.id} className="hover:bg-yellow-50 transition">
+                        <td className="p-2 md:p-4 font-bold">{item.name}</td>
+                        <td className="p-2 md:p-4 text-gray-600">{item.category}</td>
+                        <td className="p-2 md:p-4 text-gray-800">{item.currentHolder}</td>
+                        <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
+                        <td className="p-2 md:p-4">
+                          {rejectingItemId === item.id ? (
+                            <div className="flex flex-col gap-2 bg-white p-2 rounded shadow-sm border border-red-200 min-w-[200px]">
+                              <input
+                                type="text"
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="سبب الرفض..."
+                                className="w-full p-2 text-xs md:text-sm border border-gray-300 rounded focus:border-red-500 outline-none"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={submitRejection}
+                                  className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 flex-1"
+                                >
+                                  تأكيد الرفض
+                                </button>
+                                <button
+                                  onClick={cancelRejection}
+                                  className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-300"
+                                >
+                                  إلغاء
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-center gap-2">
                               <button
-                                onClick={submitRejection}
-                                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 flex-1"
+                                onClick={() => {
+                                  if(confirm('هل تم استلام العدة ومعاينتها؟')) {
+                                    onApproveReturn(item.id);
+                                  }
+                                }}
+                                className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-green-700 transition shadow-sm whitespace-nowrap"
                               >
-                                تأكيد الرفض
+                                قبول واستلام
                               </button>
                               <button
-                                onClick={cancelRejection}
-                                className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-300"
+                                onClick={() => handleRejectClick(item.id)}
+                                className="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-red-100 transition shadow-sm whitespace-nowrap"
                               >
-                                إلغاء
+                                رفض
                               </button>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => {
-                                if(confirm('هل تم استلام العدة ومعاينتها؟')) {
-                                  onApproveReturn(item.id);
-                                }
-                              }}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition shadow-sm"
-                            >
-                              قبول واستلام
-                            </button>
-                            <button
-                              onClick={() => handleRejectClick(item.id)}
-                              className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition shadow-sm"
-                            >
-                              رفض الطلب
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
       ) : (
         <div className="animate-fade-in space-y-4">
           <div className="bg-blue-50 border-r-4 border-blue-400 p-4 rounded-lg mb-6">
-            <h2 className="text-lg font-bold text-blue-800">إرجاع يدوي مباشر</h2>
-            <p className="text-blue-700">يمكنك هنا البحث عن أي عدة "معارة" حالياً وتسجيل استلامها (إرجاعها للمستودع) مباشرة دون الحاجة لطلب من المدرب.</p>
+            <h2 className="text-base md:text-lg font-bold text-blue-800">إرجاع يدوي مباشر</h2>
+            <p className="text-blue-700 text-sm md:text-base">يمكنك هنا البحث عن أي عدة "معارة" حالياً وتسجيل استلامها (إرجاعها للمستودع) مباشرة دون الحاجة لطلب من المدرب.</p>
           </div>
 
           {/* Search */}
@@ -178,39 +180,41 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
                  {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد عهد خارج المستودع حالياً'}
               </div>
             ) : (
-              <table className="w-full text-right">
-                <thead className="bg-blue-600 text-white">
-                  <tr>
-                    <th className="p-4">اسم العدة</th>
-                    <th className="p-4">الفئة</th>
-                    <th className="p-4">معار إلى (المدرب)</th>
-                    <th className="p-4">تاريخ الخروج</th>
-                    <th className="p-4">الإجراء</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredCheckedOut.map(item => (
-                    <tr key={item.id} className="hover:bg-blue-50 transition">
-                      <td className="p-4 font-bold">{item.name}</td>
-                      <td className="p-4 text-gray-600">{item.category}</td>
-                      <td className="p-4 text-gray-800 font-semibold">{item.currentHolder}</td>
-                      <td className="p-4 text-sm text-gray-500">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
-                      <td className="p-4">
-                        <button
-                          onClick={() => {
-                            if(confirm(`هل أنت متأكد من استرجاع "${item.name}" من المدرب "${item.currentHolder}"؟`)) {
-                              onApproveReturn(item.id);
-                            }
-                          }}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm whitespace-nowrap"
-                        >
-                          إرجاع للمستودع
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-right min-w-[600px] md:min-w-full">
+                  <thead className="bg-blue-600 text-white text-xs md:text-sm">
+                    <tr>
+                      <th className="p-2 md:p-4">اسم العدة</th>
+                      <th className="p-2 md:p-4">الفئة</th>
+                      <th className="p-2 md:p-4">معار إلى (المدرب)</th>
+                      <th className="p-2 md:p-4">تاريخ الخروج</th>
+                      <th className="p-2 md:p-4">الإجراء</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
+                    {filteredCheckedOut.map(item => (
+                      <tr key={item.id} className="hover:bg-blue-50 transition">
+                        <td className="p-2 md:p-4 font-bold">{item.name}</td>
+                        <td className="p-2 md:p-4 text-gray-600">{item.category}</td>
+                        <td className="p-2 md:p-4 text-gray-800 font-semibold">{item.currentHolder}</td>
+                        <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
+                        <td className="p-2 md:p-4">
+                          <button
+                            onClick={() => {
+                              if(confirm(`هل أنت متأكد من استرجاع "${item.name}" من المدرب "${item.currentHolder}"؟`)) {
+                                onApproveReturn(item.id);
+                              }
+                            }}
+                            className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-blue-700 transition shadow-sm whitespace-nowrap"
+                          >
+                            إرجاع للمستودع
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>

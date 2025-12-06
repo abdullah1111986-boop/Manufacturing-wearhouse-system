@@ -138,7 +138,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
 
   if (!currentUser) {
     return (
-      <div className="max-w-md mx-auto mt-10 p-4">
+      <div className="max-w-md mx-auto mt-4 md:mt-10 p-4">
         <div className="flex justify-end mb-4">
             <button 
               onClick={onSwitchToSupervisor}
@@ -148,7 +148,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
             </button>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-lg border-t-4 border-blue-600">
+        <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border-t-4 border-blue-600">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-800">بوابة المدربين</h2>
             <p className="text-gray-500 mt-2 text-sm">الرجاء اختيار الاسم وإدخال الرمز السري</p>
@@ -208,31 +208,31 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-wrap gap-2">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">مرحباً، {currentUser.name}</h2>
-          <p className="text-sm text-gray-500">لوحة تحكم المدرب</p>
+          <h2 className="text-lg md:text-xl font-bold text-gray-800">مرحباً، {currentUser.name}</h2>
+          <p className="text-xs md:text-sm text-gray-500">لوحة تحكم المدرب</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
            <button 
              onClick={onSwitchToSupervisor}
-             className="text-gray-600 text-sm font-semibold hover:bg-gray-100 px-3 py-1 rounded-lg transition flex items-center gap-1 border border-gray-200"
+             className="flex-1 md:flex-none justify-center text-gray-600 text-xs md:text-sm font-semibold hover:bg-gray-100 px-3 py-2 rounded-lg transition flex items-center gap-1 border border-gray-200"
            >
              🛡️ بوابة المشرفين
            </button>
            <button 
              onClick={handleLogout}
-             className="text-red-600 text-sm font-semibold hover:bg-red-50 px-3 py-1 rounded-lg transition flex items-center gap-1 border border-red-100"
+             className="flex-1 md:flex-none justify-center text-red-600 text-xs md:text-sm font-semibold hover:bg-red-50 px-3 py-2 rounded-lg transition flex items-center gap-1 border border-red-100"
            >
-             🚪 تسجيل خروج
+             🚪 خروج
            </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto whitespace-nowrap">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-t-lg font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-t-lg font-bold transition-all text-sm md:text-base ${
               activeTab === tab.id 
                 ? 'bg-blue-600 text-white shadow-sm translate-y-[1px]' 
                 : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -253,20 +253,20 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-right">
-                <thead className="bg-gray-50">
+              <table className="w-full text-right min-w-[600px] md:min-w-full">
+                <thead className="bg-gray-50 text-xs md:text-sm">
                   <tr>
-                    <th className="p-4 whitespace-nowrap">اسم العدة</th>
-                    <th className="p-4 whitespace-nowrap">الفئة</th>
-                    <th className="p-4 whitespace-nowrap">تاريخ الاستلام</th>
-                    <th className="p-4 whitespace-nowrap">الحالة</th>
-                    <th className="p-4 whitespace-nowrap">الإجراء</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">اسم العدة</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">الفئة</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">تاريخ الاستلام</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">الحالة</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">الإجراء</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
                   {myItems.map(item => (
                     <tr key={item.id}>
-                      <td className="p-4 font-bold">
+                      <td className="p-2 md:p-4 font-bold">
                         {item.name}
                         {item.rejectionReason && (
                           <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded border border-red-100">
@@ -274,16 +274,16 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                           </div>
                         )}
                       </td>
-                      <td className="p-4 text-gray-600">{item.category}</td>
-                      <td className="p-4 text-sm text-gray-500">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
-                      <td className="p-4">
+                      <td className="p-2 md:p-4 text-gray-600">{item.category}</td>
+                      <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
+                      <td className="p-2 md:p-4">
                         {item.status === ItemStatus.PENDING_RETURN ? (
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">بانتظار الموافقة</span>
+                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap">بانتظار الموافقة</span>
                         ) : (
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">لديك الآن</span>
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap">لديك الآن</span>
                         )}
                       </td>
-                      <td className="p-4">
+                      <td className="p-2 md:p-4">
                         {item.status === ItemStatus.CHECKED_OUT && (
                           <button
                             onClick={() => {
@@ -293,7 +293,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                                 onRequestReturn(item.id, currentUser.name);
                               }
                             }}
-                            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 transition shadow-sm whitespace-nowrap"
+                            className="bg-orange-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-orange-600 transition shadow-sm whitespace-nowrap"
                           >
                             {item.rejectionReason ? 'إعادة طلب الإرجاع' : 'رفع طلب إرجاع'}
                           </button>
@@ -309,13 +309,13 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
       )}
 
       {activeTab === 'request-tool' && (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 border-t-4 border-t-blue-500">
+        <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-gray-200 border-t-4 border-t-blue-500">
           <div className="mb-6 border-b pb-4">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
               <span className="bg-blue-100 text-blue-600 p-2 rounded-lg">📥</span>
               استلام / صرف عدة
             </h3>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-gray-500 text-xs md:text-sm mt-1">
               {isManualEntry 
                 ? 'تسجيل عدة جديدة وإضافتها لعهدتك مباشرة' 
                 : 'اختر العدة التي تحتاجها من قائمة المخزون المتاح حالياً'}
@@ -331,7 +331,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                 onChange={(e) => setIsManualEntry(e.target.checked)}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
               />
-              <label htmlFor="manualMode" className="text-gray-700 font-semibold cursor-pointer select-none">
+              <label htmlFor="manualMode" className="text-gray-700 text-sm md:text-base font-semibold cursor-pointer select-none">
                 العدة غير موجودة في القائمة؟ (تسجيل يدوي واستلام فوري)
               </label>
             </div>
@@ -377,7 +377,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
             </form>
           ) : (
             <form onSubmit={handleManualCheckoutSubmit} className="space-y-4 max-w-lg animate-fade-in">
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4 text-sm text-green-800">
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4 text-xs md:text-sm text-green-800">
                 أنت تقوم الآن بتسجيل عدة جديدة واستلامها فوراً لتصبح تحت عهدتك. لن تظهر هذه العدة كـ "متاحة" بل ستسجل كـ "معارة" لك.
               </div>
               
