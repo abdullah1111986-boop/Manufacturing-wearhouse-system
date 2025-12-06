@@ -42,8 +42,9 @@ const PortalSelection: React.FC<PortalSelectionProps> = ({ onSelect }) => {
         </button>
       </div>
 
-      <div className="mt-12 text-gray-400 text-sm">
-        جميع الحقوق محفوظة © {new Date().getFullYear()} - تقنية التصنيع
+      <div className="mt-12 text-center text-sm">
+        <p className="text-gray-400 mb-2">جميع الحقوق محفوظة © {new Date().getFullYear()} - الكلية التقنية بالطائف - تقنية التصنيع</p>
+        <p className="text-blue-500 font-bold">تطوير م. عبدالله الزهراني</p>
       </div>
     </div>
   );
