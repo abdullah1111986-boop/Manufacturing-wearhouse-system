@@ -1,9 +1,10 @@
 import { Item, Transaction, Instructor } from '../types';
 import { INITIAL_INVENTORY, INITIAL_INSTRUCTORS } from '../constants';
 
-const INV_KEY = 'makhzan_inventory';
-const TRANS_KEY = 'makhzan_transactions';
-const INST_KEY = 'makhzan_instructors';
+// Changed keys to reset data for the new empty inventory requirement
+const INV_KEY = 'makhzan_inventory_prod_v1';
+const TRANS_KEY = 'makhzan_transactions_prod_v1';
+const INST_KEY = 'makhzan_instructors'; // Keep instructors as they are
 
 export const getInventory = (): Item[] => {
   const stored = localStorage.getItem(INV_KEY);
