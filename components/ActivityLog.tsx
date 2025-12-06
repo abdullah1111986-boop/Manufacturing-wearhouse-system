@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType } from '../types';
 
 interface ActivityLogProps {
@@ -6,12 +6,71 @@ interface ActivityLogProps {
 }
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
-  // Filter transactions to only show relevant types
-  const filteredTransactions = transactions.filter(t => 
-    t.type === TransactionType.CHECKOUT || 
-    t.type === TransactionType.RETURN ||
-    t.type === TransactionType.RETURN_REJECTED
-  );
+  // Filter States
+  const [searchText, setSearchText] = useState('');
+  const [selectedInstructor, setSelectedInstructor] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // 1. Base Filter: Only show Checkout, Return, and Rejected transactions
+  const relevantTransactions = useMemo(() => {
+    return transactions.filter(t => 
+      t.type === TransactionType.CHECKOUT || 
+      t.type === TransactionType.RETURN ||
+      t.type === TransactionType.RETURN_REJECTED
+    );
+  }, [transactions]);
+
+  // 2. Extract unique instructors for dropdown
+  const uniqueInstructors = useMemo(() => {
+    const names = new Set(relevantTransactions.map(t => t.instructorName));
+    return Array.from(names).sort();
+  }, [relevantTransactions]);
+
+  // 3. Apply User Filters
+  const filteredTransactions = useMemo(() => {
+    return relevantTransactions.filter(t => {
+      // Search Text (Item Name or Notes)
+      const matchesSearch = searchText === '' || 
+        t.itemName.toLowerCase().includes(searchText.toLowerCase()) || 
+        (t.notes && t.notes.toLowerCase().includes(searchText.toLowerCase()));
+
+      // Instructor Filter
+      const matchesInstructor = selectedInstructor === '' || t.instructorName === selectedInstructor;
+
+      // Type Filter
+      const matchesType = selectedType === '' || t.type === selectedType;
+
+      // Date Range Filter
+      let matchesDate = true;
+      if (dateFrom || dateTo) {
+        const tDate = new Date(t.timestamp);
+        tDate.setHours(0, 0, 0, 0);
+
+        if (dateFrom) {
+          const from = new Date(dateFrom);
+          from.setHours(0, 0, 0, 0);
+          if (tDate < from) matchesDate = false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo);
+          to.setHours(0, 0, 0, 0);
+          if (tDate > to) matchesDate = false;
+        }
+      }
+
+      return matchesSearch && matchesInstructor && matchesType && matchesDate;
+    });
+  }, [relevantTransactions, searchText, selectedInstructor, selectedType, dateFrom, dateTo]);
+
+  const resetFilters = () => {
+    setSearchText('');
+    setSelectedInstructor('');
+    setSelectedType('');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   const handlePrint = () => {
     window.print();
@@ -79,10 +138,82 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ transactions }) => {
           </button>
         </div>
       </div>
+
+      {/* Filters Section */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 no-print animate-fade-in">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Search */}
+          <div className="lg:col-span-1">
+             <input
+               type="text"
+               placeholder="🔍 بحث باسم العدة..."
+               value={searchText}
+               onChange={(e) => setSearchText(e.target.value)}
+               className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+             />
+          </div>
+
+          {/* Instructor Filter */}
+          <div>
+            <select
+              value={selectedInstructor}
+              onChange={(e) => setSelectedInstructor(e.target.value)}
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="">👤 كل المدربين</option>
+              {uniqueInstructors.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Type Filter */}
+          <div>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="">📋 كل العمليات</option>
+              <option value={TransactionType.CHECKOUT}>استلام (خروج)</option>
+              <option value={TransactionType.RETURN}>تسليم (رجوع)</option>
+              <option value={TransactionType.RETURN_REJECTED}>رفض إرجاع</option>
+            </select>
+          </div>
+
+          {/* Date Range */}
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full p-2 border rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+              title="من تاريخ"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full p-2 border rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+              title="إلى تاريخ"
+            />
+          </div>
+
+          {/* Reset Button */}
+          <div>
+            <button
+              onClick={resetFilters}
+              className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg text-sm hover:bg-gray-200 transition font-bold"
+            >
+              🔄 إعادة تعيين
+            </button>
+          </div>
+        </div>
+      </div>
       
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-0 overflow-hidden">
         {filteredTransactions.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">لا توجد عمليات استلام أو تسليم مسجلة حتى الآن</div>
+          <div className="text-center text-gray-500 py-8">لا توجد عمليات تطابق شروط البحث</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right min-w-[600px] md:min-w-full">
