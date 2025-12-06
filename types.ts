@@ -27,7 +27,7 @@ export interface Item {
   currentHolder?: string; // Name of the instructor who has it
   lastUpdated: string;
   addedBy?: string;
-  rejectionReason?: string; // Reason why return was rejected
+  rejectionReason?: string | null; // Reason why return was rejected (Updated to allow null)
 }
 
 export interface Transaction {

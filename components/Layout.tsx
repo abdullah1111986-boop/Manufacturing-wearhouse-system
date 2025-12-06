@@ -10,6 +10,19 @@ interface LayoutProps {
   onSwitchToInstructor: () => void;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  restricted: boolean;
+  action?: string;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
 const Layout: React.FC<LayoutProps> = ({ 
   children, 
   activeTab, 
@@ -20,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  const navGroups = [
+  const navGroups: NavGroup[] = [
     {
       title: 'العمليات الرئيسية',
       items: [
@@ -62,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const handleNavClick = (item: any) => {
+  const handleNavClick = (item: NavItem) => {
     if (item.action === 'switch') {
       onSwitchToInstructor();
     } else {
