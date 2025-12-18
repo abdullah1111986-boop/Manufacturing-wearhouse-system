@@ -98,13 +98,23 @@ const App: React.FC = () => {
     setActiveTab(isSupervisorAuth ? 'dashboard' : 'login');
   };
 
-  const handleCheckout = async (itemId: string, instructorName: string) => {
-    const item = items.find(i => i.id === itemId);
-    if (item && item.status === ItemStatus.AVAILABLE) {
-      await updateInventoryItem(itemId, { 
+  const handleCheckout = async (itemId: string, instructorName: string, quantity: number = 1) => {
+    const mainItem = items.find(i => i.id === itemId);
+    if (!mainItem || mainItem.status !== ItemStatus.AVAILABLE) return;
+
+    // Find all potential candidates for multi-checkout (same name and category)
+    const candidates = items.filter(i => 
+      i.status === ItemStatus.AVAILABLE && 
+      i.name === mainItem.name && 
+      i.category === mainItem.category
+    ).slice(0, quantity);
+
+    // Process each candidate
+    for (const item of candidates) {
+      await updateInventoryItem(item.id, { 
         status: ItemStatus.CHECKED_OUT, 
         currentHolder: instructorName,
-        rejectionReason: null // Clear any previous rejection
+        rejectionReason: null
       });
 
       await addTransaction({
@@ -112,35 +122,39 @@ const App: React.FC = () => {
         itemName: item.name,
         instructorName,
         type: TransactionType.CHECKOUT,
-        timestamp: '' // Service handles timestamp
+        timestamp: ''
+      });
+    }
+
+    if (candidates.length < quantity) {
+      alert(`تنبيه: تم صرف ${candidates.length} قطع فقط من أصل ${quantity} لعدم توفر كمية كافية بنفس المسمى في المستودع.`);
+    }
+  };
+
+  const handleManualCheckout = async (itemData: {name: string, category: string}, instructorName: string, quantity: number = 1) => {
+    // Perform additions in a loop based on quantity
+    for (let i = 0; i < quantity; i++) {
+      await addInventoryItem({
+        name: itemData.name,
+        category: itemData.category,
+        status: ItemStatus.CHECKED_OUT,
+        currentHolder: instructorName,
+        addedBy: instructorName
+      });
+
+      await addTransaction({
+        itemId: 'manual-entry',
+        itemName: itemData.name,
+        instructorName: instructorName,
+        type: TransactionType.CHECKOUT,
+        timestamp: ''
       });
     }
   };
 
-  const handleManualCheckout = async (itemData: {name: string, category: string}, instructorName: string) => {
-    // 1. Add Item as Checked Out
-    const newItemRef = await addInventoryItem({
-      name: itemData.name,
-      category: itemData.category,
-      status: ItemStatus.CHECKED_OUT,
-      currentHolder: instructorName,
-      addedBy: instructorName
-    });
-
-    await addTransaction({
-      itemId: 'new-manual-item', // Placeholder or need refactor to get ID
-      itemName: itemData.name,
-      instructorName: instructorName,
-      type: TransactionType.CHECKOUT,
-      timestamp: ''
-    });
-  };
-
   // Handler for Instructors adding items (Bulk) directly to their custody
   const handleInstructorManualCheckout = async (itemData: {name: string, category: string}, quantity: number, instructorName: string) => {
-     for (let i = 0; i < quantity; i++) {
-        await handleManualCheckout(itemData, instructorName);
-     }
+     await handleManualCheckout(itemData, instructorName, quantity);
   };
 
   const handleRequestReturn = async (itemId: string, instructorName: string) => {
@@ -148,7 +162,7 @@ const App: React.FC = () => {
     if (item) {
        await updateInventoryItem(itemId, { 
          status: ItemStatus.PENDING_RETURN,
-         rejectionReason: null // Reset rejection reason on new request
+         rejectionReason: null 
        });
        
        await addTransaction({
@@ -165,7 +179,6 @@ const App: React.FC = () => {
     const item = items.find(i => i.id === itemId);
     if (item) {
       const holder = item.currentHolder || 'غير معروف';
-      // Use null instead of undefined for Firestore compatibility
       await updateInventoryItem(itemId, { 
         status: ItemStatus.AVAILABLE, 
         currentHolder: null,
@@ -179,15 +192,12 @@ const App: React.FC = () => {
         type: TransactionType.RETURN,
         timestamp: ''
       });
-      
-      alert(`تم إرجاع "${item.name}" للمستودع بنجاح`);
     }
   };
 
   const handleRejectReturn = async (itemId: string, reason: string) => {
     const item = items.find(i => i.id === itemId);
     if (item) {
-      // Return status to CHECKED_OUT so instructor sees they still have it
       await updateInventoryItem(itemId, { 
         status: ItemStatus.CHECKED_OUT,
         rejectionReason: reason
@@ -201,8 +211,6 @@ const App: React.FC = () => {
         timestamp: '',
         notes: reason
       });
-
-      alert(`تم رفض طلب الإرجاع للصنف "${item.name}". ستظهر الملاحظات للمدرب.`);
     }
   };
 

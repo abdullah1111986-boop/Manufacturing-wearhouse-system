@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Item, ItemStatus } from '../types';
 
 interface ReturnsProps {
   items: Item[];
   onApproveReturn: (itemId: string) => void;
   onRejectReturn: (itemId: string, reason: string) => void;
+}
+
+interface GroupedReturnItem {
+  name: string;
+  category: string;
+  currentHolder: string;
+  count: number;
+  ids: string[];
+  lastUpdated: string;
 }
 
 const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectReturn }) => {
@@ -18,10 +27,41 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
   const pendingReturns = items.filter(item => item.status === ItemStatus.PENDING_RETURN);
   const checkedOutItems = items.filter(item => item.status === ItemStatus.CHECKED_OUT);
 
-  const filteredCheckedOut = checkedOutItems.filter(item => 
-    item.name.includes(searchTerm) || 
-    (item.currentHolder && item.currentHolder.includes(searchTerm))
-  );
+  // Group manual returns by Name, Category, and Holder
+  const groupedManualReturns = useMemo(() => {
+    const filtered = checkedOutItems.filter(item => 
+      item.name.includes(searchTerm) || 
+      (item.currentHolder && item.currentHolder.includes(searchTerm))
+    );
+
+    const groups: Record<string, GroupedReturnItem> = {};
+
+    filtered.forEach(item => {
+      const holder = item.currentHolder || 'غير معروف';
+      const key = `${item.name}-${item.category}-${holder}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          name: item.name,
+          category: item.category,
+          currentHolder: holder,
+          count: 0,
+          ids: [],
+          lastUpdated: item.lastUpdated
+        };
+      }
+      
+      groups[key].count += 1;
+      groups[key].ids.push(item.id);
+      
+      // Keep most recent date
+      if (new Date(item.lastUpdated) > new Date(groups[key].lastUpdated)) {
+        groups[key].lastUpdated = item.lastUpdated;
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+  }, [checkedOutItems, searchTerm]);
 
   const handleRejectClick = (itemId: string) => {
     setRejectingItemId(itemId);
@@ -41,6 +81,16 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
   const cancelRejection = () => {
     setRejectingItemId(null);
     setRejectionReason('');
+  };
+
+  const handleBulkManualReturn = (group: GroupedReturnItem) => {
+    const confirmMsg = `هل أنت متأكد من استرجاع عدد (${group.count}) من "${group.name}" من المدرب "${group.currentHolder}"؟`;
+    if (confirm(confirmMsg)) {
+      group.ids.forEach(id => {
+        onApproveReturn(id);
+      });
+      alert(`تم بنجاح إرجاع ${group.count} قطع للمستودع.`);
+    }
   };
 
   return (
@@ -175,7 +225,7 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {filteredCheckedOut.length === 0 ? (
+            {groupedManualReturns.length === 0 ? (
               <div className="p-12 text-center text-gray-500">
                  {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد عهد خارج المستودع حالياً'}
               </div>
@@ -184,30 +234,28 @@ const Returns: React.FC<ReturnsProps> = ({ items, onApproveReturn, onRejectRetur
                 <table className="w-full text-right min-w-[600px] md:min-w-full">
                   <thead className="bg-blue-600 text-white text-xs md:text-sm">
                     <tr>
-                      <th className="p-2 md:p-4">اسم العدة</th>
+                      <th className="p-2 md:p-4">اسم العدة (الكمية)</th>
                       <th className="p-2 md:p-4">الفئة</th>
                       <th className="p-2 md:p-4">معار إلى (المدرب)</th>
-                      <th className="p-2 md:p-4">تاريخ الخروج</th>
-                      <th className="p-2 md:p-4">الإجراء</th>
+                      <th className="p-2 md:p-4">آخر تحديث</th>
+                      <th className="p-2 md:p-4 text-center">الإجراء</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
-                    {filteredCheckedOut.map(item => (
-                      <tr key={item.id} className="hover:bg-blue-50 transition">
-                        <td className="p-2 md:p-4 font-bold">{item.name}</td>
-                        <td className="p-2 md:p-4 text-gray-600">{item.category}</td>
-                        <td className="p-2 md:p-4 text-gray-800 font-semibold">{item.currentHolder}</td>
-                        <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
-                        <td className="p-2 md:p-4">
+                    {groupedManualReturns.map((group, index) => (
+                      <tr key={index} className="hover:bg-blue-50 transition">
+                        <td className="p-2 md:p-4 font-bold">
+                          {group.name} {group.count > 1 && <span className="text-blue-600">({group.count})</span>}
+                        </td>
+                        <td className="p-2 md:p-4 text-gray-600">{group.category}</td>
+                        <td className="p-2 md:p-4 text-gray-800 font-semibold">{group.currentHolder}</td>
+                        <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(group.lastUpdated).toLocaleDateString('ar-SA')}</td>
+                        <td className="p-2 md:p-4 text-center">
                           <button
-                            onClick={() => {
-                              if(confirm(`هل أنت متأكد من استرجاع "${item.name}" من المدرب "${item.currentHolder}"؟`)) {
-                                onApproveReturn(item.id);
-                              }
-                            }}
+                            onClick={() => handleBulkManualReturn(group)}
                             className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-blue-700 transition shadow-sm whitespace-nowrap"
                           >
-                            إرجاع للمستودع
+                            إرجاع {group.count > 1 ? `(${group.count}) قطع` : 'للمستودع'}
                           </button>
                         </td>
                       </tr>

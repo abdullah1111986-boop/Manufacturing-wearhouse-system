@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Item, ItemStatus, Instructor } from '../types';
 
 interface InstructorPortalProps {
@@ -7,8 +7,18 @@ interface InstructorPortalProps {
   onManualCheckout: (itemData: {name: string, category: string}, quantity: number, instructorName: string) => void;
   onRequestReturn: (itemId: string, instructorName: string) => void;
   onUpdateInstructor: (instructor: Instructor) => void;
-  onCheckout: (itemId: string, instructorName: string) => void;
+  onCheckout: (itemId: string, instructorName: string, quantity: number) => void;
   onSwitchToSupervisor: () => void;
+}
+
+interface GroupedMyItem {
+  name: string;
+  category: string;
+  status: ItemStatus;
+  count: number;
+  ids: string[];
+  lastUpdated: string;
+  rejectionReason: string | null;
 }
 
 const InstructorPortal: React.FC<InstructorPortalProps> = ({ 
@@ -39,7 +49,62 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
   const [passForm, setPassForm] = useState({ current: '', new: '', confirm: '' });
   const [passMsg, setPassMsg] = useState({ text: '', type: '' });
 
-  // Load user from local storage on mount if available
+  // Group items by Name and Category for availability in portal
+  const availableItemsGrouped = useMemo(() => {
+    const available = items.filter(item => item.status === ItemStatus.AVAILABLE);
+    const groups: Record<string, { item: Item; count: number }> = {};
+    
+    available.forEach(item => {
+      const key = `${item.name}-${item.category}`;
+      if (!groups[key]) {
+        groups[key] = { item, count: 0 };
+      }
+      groups[key].count += 1;
+    });
+    
+    return Object.values(groups).sort((a, b) => a.item.name.localeCompare(b.item.name));
+  }, [items]);
+
+  // Group my current items by name/category/status to merge duplicates
+  const groupedMyItems = useMemo(() => {
+    if (!currentUser) return [];
+
+    const myItemsRaw = items.filter(
+      item => (
+        (item.currentHolder === currentUser.name && item.status === ItemStatus.CHECKED_OUT) ||
+        (item.currentHolder === currentUser.name && item.status === ItemStatus.PENDING_RETURN)
+      )
+    );
+
+    const groups: Record<string, GroupedMyItem> = {};
+
+    myItemsRaw.forEach(item => {
+      // Key includes status and rejection reason so we don't merge items with different statuses
+      const key = `${item.name}-${item.category}-${item.status}-${item.rejectionReason || 'none'}`;
+      if (!groups[key]) {
+        groups[key] = {
+          name: item.name,
+          category: item.category,
+          status: item.status,
+          count: 0,
+          ids: [],
+          lastUpdated: item.lastUpdated,
+          rejectionReason: item.rejectionReason || null
+        };
+      }
+      groups[key].count += 1;
+      groups[key].ids.push(item.id);
+      
+      // Keep the most recent update date
+      if (new Date(item.lastUpdated) > new Date(groups[key].lastUpdated)) {
+        groups[key].lastUpdated = item.lastUpdated;
+      }
+    });
+
+    return Object.values(groups);
+  }, [items, currentUser]);
+
+  // Load user from local storage on mount
   React.useEffect(() => {
     const savedUserId = localStorage.getItem('makhzan_current_user_id');
     if (savedUserId && instructors.length > 0) {
@@ -99,7 +164,6 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
     setPassMsg({ text: 'تم تغيير كلمة المرور بنجاح', type: 'success' });
   };
 
-  // Handler for manual checkout (Instructor adding item to their custody)
   const handleManualCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newItem.name && newItem.category && quantity > 0 && currentUser) {
@@ -120,21 +184,34 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
   const handleCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedCheckoutItemId && currentUser) {
-      onCheckout(selectedCheckoutItemId, currentUser.name);
+      const selectedGroup = availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId);
+      
+      if (selectedGroup && quantity > selectedGroup.count) {
+        alert(`⚠️ عذراً، الكمية المطلوبة غير متوفرة. المتاح حالياً هو (${selectedGroup.count}) فقط.`);
+        return;
+      }
+
+      onCheckout(selectedCheckoutItemId, currentUser.name, quantity);
       setSelectedCheckoutItemId('');
+      setQuantity(1);
       alert('تم استلام العدة بنجاح وإضافتها إلى عهدتك');
       setActiveTab('my-items');
     }
   };
 
-  const myItems = items.filter(
-    item => currentUser && (
-      (item.currentHolder === currentUser.name && item.status === ItemStatus.CHECKED_OUT) ||
-      (item.currentHolder === currentUser.name && item.status === ItemStatus.PENDING_RETURN)
-    )
-  );
-
-  const availableItems = items.filter(item => item.status === ItemStatus.AVAILABLE);
+  const handleBulkReturnRequest = (itemGroup: GroupedMyItem) => {
+    if (!currentUser) return;
+    
+    const message = `تنبيه هام:\n\nأنت تطلب إرجاع عدد (${itemGroup.count}) من "${itemGroup.name}".\n\nهل قمت بتسليم هذه الكمية فعلياً للمشرف؟\n\nاضغط 'موافق' فقط إذا تم التسليم الفعلي ليرفع النظام طلب الموافقة للمشرف.`;
+    
+    if (confirm(message)) {
+      // Send individual request for each item ID in the group
+      itemGroup.ids.forEach(id => {
+        onRequestReturn(id, currentUser.name);
+      });
+      alert(`تم إرسال طلبات إرجاع لعدد (${itemGroup.count}) قطع.`);
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -246,7 +323,7 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
 
       {activeTab === 'my-items' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {myItems.length === 0 ? (
+          {groupedMyItems.length === 0 ? (
             <div className="p-12 text-center text-gray-500 flex flex-col items-center">
               <span className="text-4xl mb-2">👍</span>
               <span>لا توجد عهد مسجلة باسمك حالياً</span>
@@ -256,47 +333,44 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
               <table className="w-full text-right min-w-[600px] md:min-w-full">
                 <thead className="bg-gray-50 text-xs md:text-sm">
                   <tr>
-                    <th className="p-2 md:p-4 whitespace-nowrap">اسم العدة</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">اسم العدة (الكمية)</th>
                     <th className="p-2 md:p-4 whitespace-nowrap">الفئة</th>
-                    <th className="p-2 md:p-4 whitespace-nowrap">تاريخ الاستلام</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap">آخر تحديث</th>
                     <th className="p-2 md:p-4 whitespace-nowrap">الحالة</th>
-                    <th className="p-2 md:p-4 whitespace-nowrap">الإجراء</th>
+                    <th className="p-2 md:p-4 whitespace-nowrap text-center">الإجراء</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
-                  {myItems.map(item => (
-                    <tr key={item.id}>
+                  {groupedMyItems.map((group, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
                       <td className="p-2 md:p-4 font-bold">
-                        {item.name}
-                        {item.rejectionReason && (
-                          <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded border border-red-100">
-                             🛑 تم رفض الإرجاع: {item.rejectionReason}
+                        {group.name} {group.count > 1 && <span className="text-blue-600">({group.count})</span>}
+                        {group.rejectionReason && (
+                          <div className="mt-1 text-xs text-red-600 bg-red-50 p-1 rounded border border-red-100 font-normal">
+                             🛑 تم رفض الإرجاع: {group.rejectionReason}
                           </div>
                         )}
                       </td>
-                      <td className="p-2 md:p-4 text-gray-600">{item.category}</td>
-                      <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(item.lastUpdated).toLocaleDateString('ar-SA')}</td>
+                      <td className="p-2 md:p-4 text-gray-600">{group.category}</td>
+                      <td className="p-2 md:p-4 text-gray-500 whitespace-nowrap">{new Date(group.lastUpdated).toLocaleDateString('ar-SA')}</td>
                       <td className="p-2 md:p-4">
-                        {item.status === ItemStatus.PENDING_RETURN ? (
+                        {group.status === ItemStatus.PENDING_RETURN ? (
                           <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap">بانتظار الموافقة</span>
                         ) : (
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap">لديك الآن</span>
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-[10px] md:text-xs font-bold whitespace-nowrap">تحت عهدتك</span>
                         )}
                       </td>
-                      <td className="p-2 md:p-4">
-                        {item.status === ItemStatus.CHECKED_OUT && (
+                      <td className="p-2 md:p-4 text-center">
+                        {group.status === ItemStatus.CHECKED_OUT && (
                           <button
-                            onClick={() => {
-                              if (!currentUser) return;
-                              const message = "تنبيه هام:\n\nهل قمت بتسليم العدة فعلياً للمشرف (م. ياسر الشربي أو م. سرور العصيمي)؟\n\nاضغط 'موافق' فقط إذا تم التسليم الفعلي ليرفع النظام طلب الموافقة للمشرف.";
-                              if(confirm(message)) {
-                                onRequestReturn(item.id, currentUser.name);
-                              }
-                            }}
+                            onClick={() => handleBulkReturnRequest(group)}
                             className="bg-orange-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm hover:bg-orange-600 transition shadow-sm whitespace-nowrap"
                           >
-                            {item.rejectionReason ? 'إعادة طلب الإرجاع' : 'رفع طلب إرجاع'}
+                            {group.rejectionReason ? 'إعادة طلب الإرجاع' : 'رفع طلب إرجاع'}
                           </button>
+                        )}
+                        {group.status === ItemStatus.PENDING_RETURN && (
+                           <span className="text-gray-400 text-xs italic">تم رفع الطلب</span>
                         )}
                       </td>
                     </tr>
@@ -328,7 +402,10 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                 type="checkbox" 
                 id="manualMode" 
                 checked={isManualEntry} 
-                onChange={(e) => setIsManualEntry(e.target.checked)}
+                onChange={(e) => {
+                  setIsManualEntry(e.target.checked);
+                  setQuantity(1);
+                }}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
               />
               <label htmlFor="manualMode" className="text-gray-700 text-sm md:text-base font-semibold cursor-pointer select-none">
@@ -339,63 +416,96 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
 
           {!isManualEntry ? (
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 max-w-lg animate-fade-in">
-              <div>
-                <label className="block text-gray-700 font-bold mb-2">اختر العدة المطلوبة</label>
-                <select
-                  required
-                  value={selectedCheckoutItemId}
-                  onChange={(e) => setSelectedCheckoutItemId(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-                >
-                  <option value="">-- اختر من القائمة --</option>
-                  {availableItems.length === 0 ? (
-                    <option disabled>لا توجد معدات متاحة حالياً</option>
-                  ) : (
-                    availableItems.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} - ({item.category})
-                      </option>
-                    ))
-                  )}
-                </select>
-                <p className="text-xs text-gray-400 mt-2">
-                  عدد العناصر المتاحة: {availableItems.length}
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-3">
+                  <label className="block text-gray-700 font-bold mb-2 flex items-center gap-2">
+                    <span>🛠️</span> اختر العدة المطلوبة
+                  </label>
+                  <select
+                    required
+                    value={selectedCheckoutItemId}
+                    onChange={(e) => {
+                      setSelectedCheckoutItemId(e.target.value);
+                      setQuantity(1);
+                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    <option value="">-- اختر من القائمة --</option>
+                    {availableItemsGrouped.length === 0 ? (
+                      <option disabled>لا توجد معدات متاحة حالياً</option>
+                    ) : (
+                      availableItemsGrouped.map(group => (
+                        <option key={group.item.id} value={group.item.id}>
+                          {group.item.name} - ({group.item.category}) [{group.count} متوفر]
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-bold mb-2 flex items-center gap-2">
+                    <span>🔢</span> الكمية
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    required
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:outline-none text-center font-bold ${
+                      selectedCheckoutItemId && availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId) && quantity > (availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId)?.count || 0)
+                      ? 'border-red-500 bg-red-50 text-red-700 focus:ring-red-200'
+                      : 'border-gray-300 focus:ring-blue-500 bg-white'
+                    }`}
+                  />
+                </div>
               </div>
+
+              {selectedCheckoutItemId && availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId) && quantity > (availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId)?.count || 0) && (
+                 <p className="text-xs text-red-600 font-bold animate-pulse">
+                   ⚠️ الكمية المطلوبة غير متوفرة بالكامل! المتاح: ({availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId)?.count})
+                 </p>
+              )}
 
               <button
                 type="submit"
-                disabled={!selectedCheckoutItemId}
+                disabled={!selectedCheckoutItemId || (availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId)?.count || 0) < quantity}
                 className={`w-full py-3 rounded-lg font-bold text-lg shadow-md transition-all ${
-                  !selectedCheckoutItemId
+                  !selectedCheckoutItemId || (availableItemsGrouped.find(g => g.item.id === selectedCheckoutItemId)?.count || 0) < quantity
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
-                تأكيد الاستلام
+                تأكيد الاستلام {quantity > 1 ? `(${quantity} قطع)` : ''}
               </button>
             </form>
           ) : (
             <form onSubmit={handleManualCheckoutSubmit} className="space-y-4 max-w-lg animate-fade-in">
               <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4 text-xs md:text-sm text-green-800">
-                أنت تقوم الآن بتسجيل عدة جديدة واستلامها فوراً لتصبح تحت عهدتك. لن تظهر هذه العدة كـ "متاحة" بل ستسجل كـ "معارة" لك.
+                أنت تقوم الآن بتسجيل عدة جديدة واستلامها فوراً لتصبح تحت عهدتك.
               </div>
               
               <div>
-                <label className="block text-gray-700 mb-2 font-semibold">اسم العدة / الجهاز</label>
+                <label className="block text-gray-700 mb-2 font-semibold flex items-center gap-2">
+                  <span>✏️</span> اسم العدة / الجهاز
+                </label>
                 <input
                   type="text"
                   required
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  placeholder="مثال: جهاز قياس حرارة، طقم مفكات..."
+                  placeholder="مثال: جهاز قياس، طقم مفكات..."
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 mb-2 font-semibold">الفئة</label>
+                  <label className="block text-gray-700 mb-2 font-semibold flex items-center gap-2">
+                    <span>📁</span> الفئة
+                  </label>
                   <select
                     required
                     value={newItem.category}
@@ -411,7 +521,9 @@ const InstructorPortal: React.FC<InstructorPortalProps> = ({
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2 font-semibold">الكمية</label>
+                  <label className="block text-gray-700 mb-2 font-semibold flex items-center gap-2">
+                    <span>🔢</span> الكمية
+                  </label>
                   <input
                     type="number"
                     min="1"
