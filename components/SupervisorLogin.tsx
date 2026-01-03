@@ -1,25 +1,55 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { SUPERVISORS } from '../constants';
 
 interface SupervisorLoginProps {
   onLogin: () => void;
 }
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_TIME = 30 * 1000; // 30 ثانية
+
 const SupervisorLogin: React.FC<SupervisorLoginProps> = ({ onLogin }) => {
   const [selectedSupervisor, setSelectedSupervisor] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (isLocked && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1000);
+      }, 1000);
+    } else if (timeLeft <= 0) {
+      setIsLocked(false);
+      setAttempts(0);
+    }
+    return () => clearInterval(timer);
+  }, [isLocked, timeLeft]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (isLocked) return;
 
+    setError('');
     const supervisor = SUPERVISORS.find(s => s.name === selectedSupervisor);
 
     if (supervisor && supervisor.password === password) {
       onLogin();
     } else {
-      setError('بيانات الدخول غير صحيحة. الرجاء التأكد من الاسم والرقم السري.');
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      
+      if (newAttempts >= MAX_ATTEMPTS) {
+        setIsLocked(true);
+        setTimeLeft(LOCKOUT_TIME);
+        setError(`تم قفل النظام مؤقتاً بسبب محاولات خاطئة متكررة. يرجى الانتظار ${LOCKOUT_TIME/1000} ثانية.`);
+      } else {
+        setError(`بيانات الدخول غير صحيحة. المحاولات المتبقية: ${MAX_ATTEMPTS - newAttempts}`);
+      }
     }
   };
 
@@ -31,7 +61,7 @@ const SupervisorLogin: React.FC<SupervisorLoginProps> = ({ onLogin }) => {
             🛡️
           </div>
           <h2 className="text-2xl font-bold text-gray-800">دخول المشرفين</h2>
-          <p className="text-gray-500 mt-2">هذه المنطقة مقيدة بصلاحيات إدارية</p>
+          <p className="text-gray-500 mt-2">نظام محمي سيبرانياً</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -40,8 +70,9 @@ const SupervisorLogin: React.FC<SupervisorLoginProps> = ({ onLogin }) => {
             <select
               value={selectedSupervisor}
               onChange={(e) => setSelectedSupervisor(e.target.value)}
+              disabled={isLocked}
               required
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-500 outline-none bg-gray-50"
+              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-500 outline-none bg-gray-50 disabled:opacity-50"
             >
               <option value="">-- اختر الاسم --</option>
               {SUPERVISORS.map((s) => (
@@ -56,29 +87,27 @@ const SupervisorLogin: React.FC<SupervisorLoginProps> = ({ onLogin }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLocked}
               placeholder="أدخل الرقم السري..."
               required
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-500 outline-none bg-gray-50"
+              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-500 outline-none bg-gray-50 disabled:opacity-50"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold text-center border border-red-100">
-              {error}
+            <div className={`p-3 rounded-lg text-sm font-bold text-center border ${isLocked ? 'bg-red-100 text-red-700 border-red-200' : 'bg-red-50 text-red-600 border-red-100'}`}>
+              {error} {isLocked && `(${Math.ceil(timeLeft/1000)} ثانية)`}
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-900 transition shadow-lg transform active:scale-95"
+            disabled={isLocked || !selectedSupervisor || !password}
+            className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-900 transition shadow-lg transform active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            تسجيل الدخول
+            {isLocked ? 'النظام مقفل حالياً' : 'تسجيل الدخول الآمن'}
           </button>
         </form>
-        
-        <div className="mt-6 text-center text-xs text-gray-400">
-          نظام إدارة العهدة - تقنية التصنيع
-        </div>
       </div>
     </div>
   );
